@@ -1,6 +1,6 @@
 # LFI3A Programming Language Documentation
 
-LFI3A (pronounced "lfi-3a") is a beginner-friendly programming language that blends programming concepts with Moroccan Arabic (Darija) vocabulary. Created by Oussama Jabrane as a personal project to break free from the "computer fixer" stereotype, LFI3A offers a unique and culturally-inspired approach to learning programming.
+LFI3A (pronounced "lfj-ʕa") is a beginner-friendly programming language that blends programming concepts with Moroccan Arabic (Darija) vocabulary. Created by Oussama Jabrane as a personal project to break free from the "computer fixer" stereotype, LFI3A offers a unique and culturally-inspired approach to learning programming.
 
 ## 📋 Table of Contents
 
@@ -22,12 +22,13 @@ LFI3A (pronounced "lfi-3a") is a beginner-friendly programming language that ble
 ### Installation
 
 1. Clone the repository (if applicable)
+
 ```bash
 git clone https://github.com/Oussama-jabrane/lfi3a.git
 cd lfi3a
 ```
 
-2. Compile the interpreter:
+1. Compile the interpreter:
 
 ```bash
 g++ -std=c++17 src/*.cpp -o lfi3a
@@ -53,7 +54,7 @@ Run it:
 
 Output:
 
-```
+```text
 Salam Oussama !
 3ndek 25 years
 ```
@@ -207,7 +208,7 @@ kteb(factorial(5))  // Output: 120
 
 ## 🏗️ Project Structure
 
-```
+```shell
 lfi3a/
 ├── src/                    # Source code
 │   ├── main.cpp           # Entry point
@@ -277,7 +278,7 @@ ma7ad (s7i7) {
 ## 📝 Language Keywords Reference
 
 | Keyword | Meaning | Usage |
-|---------|---------|-------|
+| --------- | --------- | --------- |
 | `dir` | Declare variable | `dir x = 5` |
 | `kteb` | Print/output | `kteb("Hello")` |
 | `ila` | If statement | `ila (condition) {...}` |
@@ -293,6 +294,7 @@ ma7ad (s7i7) {
 | `wla` | OR | `a wla b` |
 
 ## ⚠️ Limitations
+
 <a id="-limitations"></a>
 
 ### Current Version
@@ -340,5 +342,3 @@ LFI3A is released as an educational project. See the project repository for spec
 ---
 
 Created with ❤️ by **Oussama Jabrane**. Inspired by Moroccan culture and a desire to make programming more accessible.
-
-
