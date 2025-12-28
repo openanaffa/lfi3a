@@ -1,0 +1,27 @@
+kteb("=== LFI3A Language Enhancements (Milestone 4) ===");
+
+// Arrays (Mjerra)
+dir m = [10, 20, 30];
+kteb("Array m: " + kelma(m));
+kteb("m[0]: " + kelma(m[0]));
+kteb("m[2]: " + kelma(m[2]));
+
+// Array Assignment
+m[1] = 99;
+kteb("Modified m[1] to 99: " + kelma(m[1]));
+kteb("Array m now: " + kelma(m));
+
+// Standard Library
+kteb("Length of m: " + kelma(tul(m)));
+kteb("Length of 'Darija': " + kelma(tul("Darija")));
+
+kteb("Type of 10: " + naw3(10));
+kteb("Type of 's': " + naw3("s"));
+kteb("Type of s7i7: " + naw3(s7i7));
+kteb("Type of m: " + naw3(m));
+
+dir n = "123.45";
+dir val = ra9m(n);
+kteb("ra9m('123.45') + 1 = " + kelma(val + 1));
+
+kteb("Current wa9t (ms): " + kelma(wa9t()));

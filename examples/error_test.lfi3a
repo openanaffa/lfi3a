@@ -1,0 +1,3 @@
+dir x = 10;
+kteb(x);
+kteb(y); // This should cause an error
