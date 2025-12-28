@@ -1,7 +1,9 @@
 #include "Interpreter.hpp"
+#include "ErrorHandler.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -37,8 +39,38 @@ void Interpreter::execute(const ASTNodePtr &node) {
   }
 
   case NodeType::ASSIGNMENT: {
-    Value value = evaluate(node->children[0]);
-    environment->assign(node->value, value);
+    ASTNodePtr target = node->children[0];
+    Value val = evaluate(node->children[1]);
+
+    if (target->type == NodeType::IDENTIFIER) {
+      try {
+        environment->assign(target->value, val);
+      } catch (const std::runtime_error &e) {
+        ErrorHandler::fatal(node->line, node->column, e.what());
+      }
+    } else if (target->type == NodeType::ARRAY_INDEX) {
+      Value arrValue = evaluate(target->children[0]);
+      Value indexValue = evaluate(target->children[1]);
+
+      if (arrValue.type != ValueType::ARRAY) {
+        ErrorHandler::fatal(target->line, target->column,
+                            "Indexing non-array value.");
+      }
+      if (indexValue.type != ValueType::NUMBER) {
+        ErrorHandler::fatal(target->line, target->column,
+                            "Index must be a number.");
+      }
+
+      auto arr = std::get<ArrayPtr>(arrValue.data);
+      int index = (int)indexValue.toNumber();
+
+      if (index < 0 || index >= (int)arr->size()) {
+        ErrorHandler::fatal(target->line, target->column,
+                            "Array index out of bounds.");
+      }
+
+      (*arr)[index] = val;
+    }
     break;
   }
 
@@ -172,7 +204,44 @@ Value Interpreter::evaluate(const ASTNodePtr &node) {
     return Value(node->value == "s7i7");
 
   case NodeType::IDENTIFIER: {
-    return environment->get(node->value);
+    try {
+      return environment->get(node->value);
+    } catch (const std::runtime_error &e) {
+      ErrorHandler::fatal(node->line, node->column, e.what());
+      return Value(); // unreachable
+    }
+  }
+
+  case NodeType::ARRAY_LITERAL: {
+    auto arr = std::make_shared<std::vector<Value>>();
+    for (const auto &child : node->children) {
+      arr->push_back(evaluate(child));
+    }
+    return Value(arr);
+  }
+
+  case NodeType::ARRAY_INDEX: {
+    Value arrValue = evaluate(node->children[0]);
+    Value indexValue = evaluate(node->children[1]);
+
+    if (arrValue.type != ValueType::ARRAY) {
+      ErrorHandler::fatal(node->line, node->column,
+                          "Indexing non-array value.");
+    }
+    if (indexValue.type != ValueType::NUMBER) {
+      ErrorHandler::fatal(node->line, node->column, "Index must be a number.");
+    }
+
+    auto arr = std::get<ArrayPtr>(arrValue.data);
+    int index = (int)indexValue.toNumber();
+
+    if (index < 0 || index >= (int)arr->size()) {
+      ErrorHandler::fatal(node->line, node->column,
+                          "Array index out of bounds: " +
+                              std::to_string(index));
+    }
+
+    return (*arr)[index];
   }
 
   case NodeType::BINARY_OP: {
@@ -197,8 +266,7 @@ Value Interpreter::evaluate(const ASTNodePtr &node) {
       double l = left.toNumber();
       double r = right.toNumber();
       if (r == 0) {
-        std::cerr << "Error: Division by zero\n";
-        exit(1);
+        ErrorHandler::fatal(node->line, node->column, "Division by zero");
       }
       if (l == (long long)l && r == (long long)r) {
         return Value((double)((long long)l / (long long)r));
@@ -292,10 +360,57 @@ Value Interpreter::evaluate(const ASTNodePtr &node) {
       returnValue = savedReturnValue;
 
       return result;
-    } else {
-      std::cerr << "Error: Undefined function '" << node->value << "'\n";
-      exit(1);
     }
+
+    // Built-in functions
+    if (node->value == "tul") {
+      if (node->children.empty())
+        return Value(0.0);
+      Value val = evaluate(node->children[0]);
+      if (val.type == ValueType::STRING) {
+        return Value((double)std::get<std::string>(val.data).length());
+      } else if (val.type == ValueType::ARRAY) {
+        return Value((double)std::get<ArrayPtr>(val.data)->size());
+      }
+      return Value(0.0);
+    } else if (node->value == "naw3") {
+      if (node->children.empty())
+        return Value("nil");
+      Value val = evaluate(node->children[0]);
+      switch (val.type) {
+      case ValueType::NUMBER:
+        return Value("number");
+      case ValueType::STRING:
+        return Value("string");
+      case ValueType::BOOLEAN:
+        return Value("bool");
+      case ValueType::ARRAY:
+        return Value("array");
+      case ValueType::NIL:
+        return Value("nil");
+      default:
+        return Value("unknown");
+      }
+    } else if (node->value == "ra9m") {
+      if (node->children.empty())
+        return Value(0.0);
+      Value val = evaluate(node->children[0]);
+      return Value(val.toNumber());
+    } else if (node->value == "kelma") {
+      if (node->children.empty())
+        return Value("");
+      Value val = evaluate(node->children[0]);
+      return Value(val.toString());
+    } else if (node->value == "wa9t") {
+      auto now = std::chrono::system_clock::now();
+      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now.time_since_epoch())
+                    .count();
+      return Value((double)ms);
+    }
+
+    ErrorHandler::fatal(node->line, node->column,
+                        "Undefined function '" + node->value + "'");
   }
 
   default:
@@ -320,8 +435,7 @@ void Interpreter::loadModule(const std::string &moduleName) {
 
   std::ifstream file(fullPath);
   if (!file.is_open()) {
-    std::cerr << "Error: Cannot open module file '" << filename << "'\n";
-    exit(1);
+    ErrorHandler::fatal(0, 0, "Cannot open module file '" + filename + "'");
   }
 
   std::string code((std::istreambuf_iterator<char>(file)),

@@ -2,7 +2,6 @@
 #include <iomanip>
 #include <sstream>
 
-
 bool Value::isTruthy() const {
   switch (type) {
   case ValueType::NIL:
@@ -13,6 +12,8 @@ bool Value::isTruthy() const {
     return std::get<double>(data) != 0;
   case ValueType::STRING:
     return !std::get<std::string>(data).empty();
+  case ValueType::ARRAY:
+    return !std::get<ArrayPtr>(data)->empty();
   default:
     return false;
   }
@@ -34,6 +35,17 @@ std::string Value::toString() const {
   }
   case ValueType::STRING:
     return std::get<std::string>(data);
+  case ValueType::ARRAY: {
+    auto arr = std::get<ArrayPtr>(data);
+    std::string result = "[";
+    for (size_t i = 0; i < arr->size(); ++i) {
+      result += (*arr)[i].toString();
+      if (i < arr->size() - 1)
+        result += ", ";
+    }
+    result += "]";
+    return result;
+  }
   default:
     return "";
   }
