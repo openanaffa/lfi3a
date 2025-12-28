@@ -1,0 +1,75 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "LFI3A",
+    "patterns": [
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#numbers"
+        },
+        {
+            "include": "#identifiers"
+        }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash.lfi3a",
+                    "match": "//.*$"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.lfi3a",
+                    "match": "\\b(ila|wila|wla|ma7ad|kol|rje3|jib|man)\\b"
+                },
+                {
+                    "name": "keyword.declaration.lfi3a",
+                    "match": "\\b(dir|dalla|kalla)\\b"
+                },
+                {
+                    "name": "keyword.other.kteb.lfi3a",
+                    "match": "\\b(kteb)\\b"
+                },
+                {
+                    "name": "constant.language.boolean.lfi3a",
+                    "match": "\\b(s7i7|ghalat)\\b"
+                },
+                {
+                    "name": "keyword.operator.logical.lfi3a",
+                    "match": "\\b(w)\\b"
+                }
+            ]
+        },
+        "strings": {
+            "name": "string.quoted.double.lfi3a",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.lfi3a",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "numbers": {
+            "name": "constant.numeric.lfi3a",
+            "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+        },
+        "identifiers": {
+            "name": "variable.other.lfi3a",
+            "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+    ],
+    "scopeName": "source.lfi3a"
+}

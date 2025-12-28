@@ -1,0 +1,35 @@
+{
+    "name": "lfi3a-vscode",
+    "displayName": "LFI3A Language Support",
+    "description": "Syntax highlighting and language support for the LFI3A programming language (Darija based).",
+    "version": "0.1.0",
+    "publisher": "lfi3a",
+    "engines": {
+        "vscode": "^1.60.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "lfi3a",
+                "aliases": [
+                    "LFI3A",
+                    "lfi3a"
+                ],
+                "extensions": [
+                    ".lfi3a"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "lfi3a",
+                "scopeName": "source.lfi3a",
+                "path": "./syntaxes/lfi3a.tmLanguage.json"
+            }
+        ]
+    }
+}
