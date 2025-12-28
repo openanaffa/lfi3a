@@ -1,12 +1,16 @@
 {
     "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
     "name": "LFI3A",
+    "scopeName": "source.lfi3a",
     "patterns": [
         {
             "include": "#comments"
         },
         {
             "include": "#keywords"
+        },
+        {
+            "include": "#functions"
         },
         {
             "include": "#strings"
@@ -51,25 +55,44 @@
                 }
             ]
         },
-        "strings": {
-            "name": "string.quoted.double.lfi3a",
-            "begin": "\"",
-            "end": "\"",
+        "functions": {
             "patterns": [
                 {
-                    "name": "constant.character.escape.lfi3a",
-                    "match": "\\\\."
+                    "name": "support.function.builtin.lfi3a",
+                    "match": "\\b(tul|naw3|ra9m|kelma|wa9t)\\b"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.lfi3a",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.lfi3a",
+                            "match": "\\\\."
+                        }
+                    ]
                 }
             ]
         },
         "numbers": {
-            "name": "constant.numeric.lfi3a",
-            "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+            "patterns": [
+                {
+                    "name": "constant.numeric.lfi3a",
+                    "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+                }
+            ]
         },
         "identifiers": {
-            "name": "variable.other.lfi3a",
-            "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+            "patterns": [
+                {
+                    "name": "variable.other.lfi3a",
+                    "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+                }
+            ]
         }
-    ],
-    "scopeName": "source.lfi3a"
+    }
 }
