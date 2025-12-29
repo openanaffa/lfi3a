@@ -14,6 +14,8 @@ bool Value::isTruthy() const {
     return !std::get<std::string>(data).empty();
   case ValueType::ARRAY:
     return !std::get<ArrayPtr>(data)->empty();
+  case ValueType::NATIVE_FUNC:
+    return true;
   default:
     return false;
   }
@@ -46,6 +48,8 @@ std::string Value::toString() const {
     result += "]";
     return result;
   }
+  case ValueType::NATIVE_FUNC:
+    return "<native function>";
   default:
     return "";
   }
@@ -66,6 +70,8 @@ double Value::toNumber() const {
       return 0;
     }
   }
+  case ValueType::NATIVE_FUNC:
+    return 0;
   default:
     return 0;
   }

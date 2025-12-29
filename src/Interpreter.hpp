@@ -10,7 +10,6 @@
 #include <unordered_map>
 #include <vector>
 
-
 class Interpreter {
 public:
   Interpreter();
@@ -27,6 +26,9 @@ private:
   Value returnValue;
   bool hasReturned = false;
   std::string currentDirectory;
+
+  void registerBuiltin(const std::string &name, NativeFunc func);
+  void registerBuiltins();
 
   Value evaluate(const ASTNodePtr &node);
   void execute(const ASTNodePtr &node);

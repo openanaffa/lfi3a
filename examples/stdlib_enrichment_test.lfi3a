@@ -1,0 +1,25 @@
+kteb("=== LFI3A StdLib Enrichment Test ===")
+
+// Math
+kteb("Abs(-5):", motla9(-5))
+kteb("Round(4.6):", dwer(4.6))
+kteb("Ceil(4.1):", ls9ef(4.1))
+kteb("Floor(4.9):", l9a3(4.9))
+kteb("Sqrt(16):", jdr(16))
+kteb("Pow(2, 3):", os(2, 3))
+kteb("Random:", 3chwa2i())
+
+// DateTime
+kteb("Daba (Now):", daba())
+kteb("Lyum (Today):", lyum())
+kteb("Sakan (Timestamp):", sakan())
+
+// Locales
+kteb("Flouss (150.5):", flouss(150.5))
+kteb("Flouss(1000):", flouss(1000))
+
+// Extensibility Verify (Native function as variable)
+dir my_abs = motla9
+kteb("MyAbs(-10):", my_abs(-10))
+
+kteb("=== Test Complete ===")

@@ -15,6 +15,7 @@ namespace fs = std::filesystem;
 Interpreter::Interpreter() {
   globals = std::make_shared<Environment>();
   environment = globals;
+  registerBuiltins();
 }
 
 void Interpreter::run(const std::vector<ASTNodePtr> &nodes,
@@ -362,100 +363,161 @@ Value Interpreter::evaluate(const ASTNodePtr &node) {
       return result;
     }
 
-    // Built-in functions
-    if (node->value == "tul") {
-      if (node->children.empty())
-        return Value(0.0);
-      Value val = evaluate(node->children[0]);
-      if (val.type == ValueType::STRING) {
-        return Value((double)std::get<std::string>(val.data).length());
-      } else if (val.type == ValueType::ARRAY) {
-        return Value((double)std::get<ArrayPtr>(val.data)->size());
+    // Check for native functions in the environment
+    try {
+      Value val = environment->get(node->value);
+      if (val.type == ValueType::NATIVE_FUNC) {
+        std::vector<Value> args;
+        for (const auto &child : node->children) {
+          args.push_back(evaluate(child));
+        }
+        return std::get<NativeFunc>(val.data)(args);
       }
-      return Value(0.0);
-    } else if (node->value == "naw3") {
-      if (node->children.empty())
-        return Value("nil");
-      Value val = evaluate(node->children[0]);
-      switch (val.type) {
-      case ValueType::NUMBER:
-        return Value("number");
-      case ValueType::STRING:
-        return Value("string");
-      case ValueType::BOOLEAN:
-        return Value("bool");
-      case ValueType::ARRAY:
-        return Value("array");
-      case ValueType::NIL:
-        return Value("nil");
-      default:
-        return Value("unknown");
-      }
-    } else if (node->value == "ra9m") {
-      if (node->children.empty())
-        return Value(0.0);
-      Value val = evaluate(node->children[0]);
-      return Value(val.toNumber());
-    } else if (node->value == "kelma") {
-      if (node->children.empty())
-        return Value("");
-      Value val = evaluate(node->children[0]);
-      return Value(val.toString());
-    } else if (node->value == "wa9t") {
-      auto now = std::chrono::system_clock::now();
-      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    now.time_since_epoch())
-                    .count();
-      return Value((double)ms);
+    } catch (...) {
+      // Not in environment, could be a built-in that we handle below (legacy)
     }
 
-    ErrorHandler::fatal(node->line, node->column,
-                        "Undefined function '" + node->value + "'");
-  }
+    void Interpreter::registerBuiltin(const std::string &name,
+                                      NativeFunc func) {
+      globals->define(name, Value(func));
+    }
 
-  default:
-    break;
-  }
+    void Interpreter::registerBuiltins() {
+      // Essentials
+      registerBuiltin("tul", [](const std::vector<Value> &args) -> Value {
+        if (args.empty())
+          return Value(0.0);
+        if (args[0].type == ValueType::STRING) {
+          return Value((double)std::get<std::string>(args[0].data).length());
+        } else if (args[0].type == ValueType::ARRAY) {
+          return Value((double)std::get<ArrayPtr>(args[0].data)->size());
+        }
+        return Value(0.0);
+      });
 
-  return Value();
-}
+      registerBuiltin("naw3", [](const std::vector<Value> &args) -> Value {
+        if (args.empty())
+          return Value("nil");
+        switch (args[0].type) {
+        case ValueType::NUMBER:
+          return Value("number");
+        case ValueType::STRING:
+          return Value("string");
+        case ValueType::BOOLEAN:
+          return Value("bool");
+        case ValueType::ARRAY:
+          return Value("array");
+        case ValueType::NIL:
+          return Value("nil");
+        default:
+          return Value("unknown");
+        }
+      });
 
-void Interpreter::loadModule(const std::string &moduleName) {
-  if (importedModules.find(moduleName) != importedModules.end())
-    return;
+      registerBuiltin("ra9m", [](const std::vector<Value> &args) -> Value {
+        if (args.empty())
+          return Value(0.0);
+        return Value(args[0].toNumber());
+      });
 
-  std::string filename = moduleName + ".lfi3a";
-  std::string fullPath = filename;
+      registerBuiltin("kelma", [](const std::vector<Value> &args) -> Value {
+        if (args.empty())
+          return Value("");
+        return Value(args[0].toString());
+      });
 
-  if (!currentDirectory.empty()) {
-    fs::path dirPath = fs::path(currentDirectory) / filename;
-    if (fs::exists(dirPath))
-      fullPath = dirPath.string();
-  }
+      registerBuiltin("wa9t", [](const std::vector<Value> &args) -> Value {
+        auto now = std::chrono::system_clock::now();
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                      now.time_since_epoch())
+                      .count();
+        return Value((double)ms);
+      });
 
-  std::ifstream file(fullPath);
-  if (!file.is_open()) {
-    ErrorHandler::fatal(0, 0, "Cannot open module file '" + filename + "'");
-  }
+      // Math Library
+      registerBuiltin("motla9",
+                      [](const std::vector<Value> &args) -> Value { // abs
+                        if (args.empty())
+                          return Value(0.0);
+                        return Value(std::abs(args[0].toNumber()));
+                      });
 
-  std::string code((std::istreambuf_iterator<char>(file)),
-                   std::istreambuf_iterator<char>());
-  file.close();
+      registerBuiltin("dwer",
+                      [](const std::vector<Value> &args) -> Value { // round
+                        if (args.empty())
+                          return Value(0.0);
+                        return Value(std::round(args[0].toNumber()));
+                      });
 
-  importedModules.insert(moduleName);
-  Lexer lexer(code);
-  auto tokens = lexer.tokenize();
-  Parser parser(tokens);
-  auto ast = parser.parse();
+      registerBuiltin("ls9ef",
+                      [](const std::vector<Value> &args) -> Value { // ceil
+                        if (args.empty())
+                          return Value(0.0);
+                        return Value(std::ceil(args[0].toNumber()));
+                      });
 
-  for (const auto &node : ast) {
-    if (hasReturned)
-      hasReturned = false;
-    execute(node);
-  }
-}
+      registerBuiltin("l9a3",
+                      [](const std::vector<Value> &args) -> Value { // floor
+                        if (args.empty())
+                          return Value(0.0);
+                        return Value(std::floor(args[0].toNumber()));
+                      });
 
-void Interpreter::loadModuleItem(const std::string &moduleName,
-                                 const std::string &itemName) {
-  loadModule(moduleName);
-}
+      registerBuiltin("jdr",
+                      [](const std::vector<Value> &args) -> Value { // sqrt
+                        if (args.empty())
+                          return Value(0.0);
+                        return Value(std::sqrt(args[0].toNumber()));
+                      });
+
+      registerBuiltin("os", [](const std::vector<Value> &args) -> Value { // pow
+        if (args.size() < 2)
+          return Value(0.0);
+        return Value(std::pow(args[0].toNumber(), args[1].toNumber()));
+      });
+
+      registerBuiltin("3chwa2i",
+                      [](const std::vector<Value> &args) -> Value { // rand
+                        return Value((double)std::rand() / RAND_MAX);
+                      });
+    }
+
+    void Interpreter::loadModule(const std::string &moduleName) {
+      if (importedModules.find(moduleName) != importedModules.end())
+        return;
+
+      std::string filename = moduleName + ".lfi3a";
+      std::string fullPath = filename;
+
+      if (!currentDirectory.empty()) {
+        fs::path dirPath = fs::path(currentDirectory) / filename;
+        if (fs::exists(dirPath))
+          fullPath = dirPath.string();
+      }
+
+      std::ifstream file(fullPath);
+      if (!file.is_open()) {
+        ErrorHandler::fatal(0, 0, "Cannot open module file '" + filename + "'");
+      }
+
+      std::string code((std::istreambuf_iterator<char>(file)),
+                       std::istreambuf_iterator<char>());
+      file.close();
+
+      importedModules.insert(moduleName);
+      Lexer lexer(code);
+      auto tokens = lexer.tokenize();
+      Parser parser(tokens);
+      auto ast = parser.parse();
+
+      for (const auto &node : ast) {
+        if (hasReturned)
+          hasReturned = false;
+        execute(node);
+      }
+    }
+
+    void Interpreter::loadModuleItem(const std::string &moduleName,
+                                     const std::string &itemName) {
+      loadModule(moduleName);
+    }
