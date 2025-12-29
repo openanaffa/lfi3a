@@ -1,0 +1,61 @@
+// 7nesh Game (Snake) in LFI3A
+kteb("Bismillah... Ghanbdaw 7nesh!")
+
+chacha_7ell()
+
+dir 7neshX = 10
+dir 7neshY = 10
+dir dirX = 1
+dir dirY = 0
+dir khaddam = s7i7
+dir maklaX = 15
+dir maklaY = 5
+dir no9at = 0
+
+ma7ad (khaddam) {
+    chacha_imsah()
+    
+    // Rsem l-7oudoud (Draw Borders)
+    rsem_mrabba3(0, 0, 40, 1, 0)
+    rsem_mrabba3(0, 20, 40, 1, 0)
+    rsem_mrabba3(0, 0, 1, 20, 0)
+    rsem_mrabba3(39, 0, 1, 21, 0)
+
+    // Rsem l-makla (Draw Food - Red)
+    rsem_mrabba3(maklaX, maklaY, 1, 1, 1)
+
+    // Rsem l-7nesh (Draw Snake - Green)
+    rsem_mrabba3(7neshX, 7neshY, 1, 1, 2)
+    
+    chacha_3red()
+
+    // Chouf chnou t-twrack (Input Handling)
+    dir sarout = wrack_3la()
+    ila (sarout == 113) { khaddam = ghalat } // 'q' to quit
+    wila (sarout == 119) { dirX = 0; dirY = -1 } // 'w' up
+    wila (sarout == 115) { dirX = 0; dirY = 1 }  // 's' down
+    wila (sarout == 97)  { dirX = -1; dirY = 0 } // 'a' left
+    wila (sarout == 100) { dirX = 1; dirY = 0 }  // 'd' right
+
+    // T7arrak l-7nesh (Move)
+    7neshX = 7neshX + dirX
+    7neshY = 7neshY + dirY
+
+    // Ila kherj mn l-chach (Wrap around)
+    ila (7neshX < 1) { 7neshX = 38 }
+    wila (7neshX > 38) { 7neshX = 1 }
+    ila (7neshY < 1) { 7neshY = 19 }
+    wila (7neshY > 19) { 7neshY = 1 }
+
+    // Ila kla l-makla (Collision with food)
+    ila (7neshX == maklaX w 7neshY == maklaY) {
+        no9at = no9at + 1
+        maklaX = (maklaX * 7 + 13) % 38 + 1
+        maklaY = (maklaY * 3 + 7) % 19 + 1
+    }
+
+    na3ess(100) // 10 FPS
+}
+
+chacha_sedd()
+kteb("Salat l-lo3ba! No9at:", no9at)

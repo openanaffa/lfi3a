@@ -774,6 +774,46 @@ Value Interpreter::evaluate(const ASTNodePtr &node) {
             return Value(std::acos(cosTheta));
           });
 
+      registerBuiltin("ta9rib",
+                      [](const std::vector<Value> &args) -> Value { // lerp
+                        if (args.size() < 3)
+                          return Value(0.0);
+                        double a = args[0].toNumber();
+                        double b = args[1].toNumber();
+                        double t = args[2].toNumber();
+                        return Value(a + (b - a) * t);
+                      });
+
+      registerBuiltin("7essar",
+                      [](const std::vector<Value> &args) -> Value { // clamp
+                        if (args.size() < 3)
+                          return Value(0.0);
+                        double v = args[0].toNumber();
+                        double min = args[1].toNumber();
+                        double max = args[2].toNumber();
+                        return Value(std::clamp(v, min, max));
+                      });
+
+      registerBuiltin(
+          "in3ikas", [](const std::vector<Value> &args) -> Value { // reflect
+            if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
+                args[1].type != ValueType::ARRAY)
+              return Value();
+            auto v = std::get<ArrayPtr>(args[0].data);
+            auto n = std::get<ArrayPtr>(args[1].data);
+            double dot = 0;
+            size_t size = std::min(v->size(), n->size());
+            for (size_t i = 0; i < size; ++i) {
+              dot += (*v)[i].toNumber() * (*n)[i].toNumber();
+            }
+            auto res = std::make_shared<std::vector<Value>>();
+            for (size_t i = 0; i < v->size(); ++i) {
+              double val = (*v)[i].toNumber() - 2 * dot * (*n)[i].toNumber();
+              res->push_back(Value(val));
+            }
+            return Value(res);
+          });
+
       // System Utilities
       registerBuiltin(
           "na3ess", [](const std::vector<Value> &args) -> Value { // sleep

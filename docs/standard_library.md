@@ -105,3 +105,6 @@ kteb(current)
 
 - **`masafa(v1, v2)`**: Distance between two points.
 - **`zawiya(v1, v2)`**: Angle between two vectors in radians.
+- **`ta9rib(a, b, t)`**: Linear interpolation (lerp).
+- **`7essar(v, min, max)`**: Clamps value between min/max.
+- **`in3ikas(v, n)`**: Reflects vector `v` against normal `n`.
