@@ -1,0 +1,44 @@
+<NotepadPlus>
+    <UserLang name="LFI3A" id="LFI3A" version="2.1">
+        <Settings>
+            <Global autoComplete="yes" />
+            <Keywords name="Delimiters">000000</Keywords>
+            <Keywords name="Folder+">000000</Keywords>
+            <Keywords name="Folder-">000000</Keywords>
+            <Keywords name="Operators">000000</Keywords>
+            <Keywords name="Numbers">000000</Keywords>
+            <Keywords name="Strings">000000</Keywords>
+            <Keywords name="Comment">000000</Keywords>
+            <Keywords name="CommentLine">000000</Keywords>
+            <Keywords name="Keyword1">000000</Keywords>
+            <Keywords name="Keyword2">000000</Keywords>
+            <Keywords name="Keyword3">000000</Keywords>
+            <Keywords name="Keyword4">000000</Keywords>
+        </Settings>
+        <KeywordLists>
+            <Keywords name="Keyword1">ila wila wla ma7ad kol rje3 jib man</Keywords>
+            <Keywords name="Keyword2">dir dalla kalla</Keywords>
+            <Keywords name="Keyword3">kteb tul naw3 ra9m kelma wa9t</Keywords>
+            <Keywords name="Keyword4">s7i7 ghalat</Keywords>
+            <Keywords name="Operators">w + - * / = == != &lt; &gt; &lt;= &gt;=</Keywords>
+        </KeywordLists>
+        <Styles>
+            <WordsStyle name="Keyword1" styleID="1" fgColor="0000FF" bgColor="FFFFFF" fontName="" fontStyle="1" />
+            <WordsStyle name="Keyword2" styleID="2" fgColor="8000FF" bgColor="FFFFFF" fontName="" fontStyle="1" />
+            <WordsStyle name="Keyword3" styleID="3" fgColor="0080C0" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="Keyword4" styleID="4" fgColor="804000" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="Operators" styleID="5" fgColor="FF8000" bgColor="FFFFFF" fontName="" fontStyle="1" />
+            <WordsStyle name="Numbers" styleID="6" fgColor="FF0000" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="Strings" styleID="7" fgColor="808080" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="Comment" styleID="8" fgColor="008000" bgColor="FFFFFF" fontName="" fontStyle="2" />
+        </Styles>
+        <Comment>
+            <CommentLine name="CommentLine" start="//" />
+        </Comment>
+        <Strings>
+            <StringBeginning>&quot;</StringBeginning>
+            <StringEnd>&quot;</StringEnd>
+            <Escape>\</Escape>
+        </Strings>
+    </UserLang>
+</NotepadPlus>
