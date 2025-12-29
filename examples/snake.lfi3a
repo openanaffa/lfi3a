@@ -1,0 +1,61 @@
+// Snake Game in LFI3A
+kteb("Starting Snake...")
+
+chacha_7ell()
+
+dir snakeX = 10
+dir snakeY = 10
+dir dirX = 1
+dir dirY = 0
+dir running = s7i7
+dir foodX = 15
+dir foodY = 5
+dir score = 0
+
+ma7ad (running) {
+    chacha_imsah()
+    
+    // Draw Border
+    rsem_mrabba3(0, 0, 40, 1, 0)
+    rsem_mrabba3(0, 20, 40, 1, 0)
+    rsem_mrabba3(0, 0, 1, 20, 0)
+    rsem_mrabba3(39, 0, 1, 21, 0)
+
+    // Draw Food (Red)
+    rsem_mrabba3(foodX, foodY, 1, 1, 1)
+
+    // Draw Snake (Green)
+    rsem_mrabba3(snakeX, snakeY, 1, 1, 2)
+    
+    chacha_3red()
+
+    // Input Handling
+    dir key = wrack_3la()
+    ila (key == 113) { running = ghalat } // 'q' to quit
+    wila (key == 119) { dirX = 0; dirY = -1 } // 'w' up
+    wila (key == 115) { dirX = 0; dirY = 1 }  // 's' down
+    wila (key == 97)  { dirX = -1; dirY = 0 } // 'a' left
+    wila (key == 100) { dirX = 1; dirY = 0 }  // 'd' right
+
+    // Move Snake
+    snakeX = snakeX + dirX
+    snakeY = snakeY + dirY
+
+    // Wrap around
+    ila (snakeX < 1) { snakeX = 38 }
+    wila (snakeX > 38) { snakeX = 1 }
+    ila (snakeY < 1) { snakeY = 19 }
+    wila (snakeY > 19) { snakeY = 1 }
+
+    // Collision with food
+    ila (snakeX == foodX w snakeY == foodY) {
+        score = score + 1
+        foodX = (foodX * 7 + 13) % 38 + 1
+        foodY = (foodY * 3 + 7) % 19 + 1
+    }
+
+    na3ess(100) // 10 FPS
+}
+
+chacha_sedd()
+kteb("Game Over! Score:", score)

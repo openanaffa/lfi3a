@@ -5,10 +5,17 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <ctime>
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <random>
 #include <sstream>
+#include <termios.h>
+#include <thread>
+#include <unistd.h>
 
 namespace fs = std::filesystem;
 
@@ -765,6 +772,96 @@ Value Interpreter::evaluate(const ASTNodePtr &node) {
             if (cosTheta < -1.0)
               cosTheta = -1.0;
             return Value(std::acos(cosTheta));
+          });
+
+      // System Utilities
+      registerBuiltin(
+          "na3ess", [](const std::vector<Value> &args) -> Value { // sleep
+            if (!args.empty()) {
+              long long ms = static_cast<long long>(args[0].toNumber());
+              std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+            }
+            return Value();
+          });
+
+      // Game Development (Terminal-based ANSI)
+      registerBuiltin(
+          "chacha_7ell",
+          [](const std::vector<Value> &args) -> Value { // open screen
+            std::cout << "\033[?1049h\033[H\033[?25l"; // Alt buffer, Home, Hide
+                                                       // cursor
+            return Value();
+          });
+
+      registerBuiltin(
+          "chacha_sedd",
+          [](const std::vector<Value> &args) -> Value { // close screen
+            std::cout << "\033[?1049l\033[?25h"; // Normal buffer, Show cursor
+            return Value();
+          });
+
+      registerBuiltin("chacha_imsah",
+                      [](const std::vector<Value> &args) -> Value { // clear
+                        std::cout << "\033[2J\033[H";
+                        return Value();
+                      });
+
+      registerBuiltin("chacha_3red",
+                      [](const std::vector<Value> &args) -> Value { // flush
+                        std::cout << std::flush;
+                        return Value();
+                      });
+
+      registerBuiltin("rsem_mrabba3",
+                      [](const std::vector<Value> &args) -> Value { // rect
+                        if (args.size() < 4)
+                          return Value();
+                        int x = static_cast<int>(args[0].toNumber());
+                        int y = static_cast<int>(args[1].toNumber());
+                        int w = static_cast<int>(args[2].toNumber());
+                        int h = static_cast<int>(args[3].toNumber());
+                        std::string color = "\033[47m"; // Default white
+                        if (args.size() > 4) {
+                          double c = args[4].toNumber();
+                          if (c == 1)
+                            color = "\033[41m"; // Red
+                          if (c == 2)
+                            color = "\033[42m"; // Green
+                          if (c == 3)
+                            color = "\033[44m"; // Blue
+                        }
+                        for (int i = 0; i < h; ++i) {
+                          std::cout << "\033[" << (y + i + 1) << ";" << (x + 1)
+                                    << "H" << color;
+                          for (int j = 0; j < w; ++j)
+                            std::cout << " ";
+                          std::cout << "\033[0m";
+                        }
+                        return Value();
+                      });
+
+      registerBuiltin(
+          "wrack_3la",
+          [](const std::vector<Value> &args) -> Value { // key pressed
+            struct termios oldt, newt;
+            int ch;
+            int oldf;
+            tcgetattr(STDIN_FILENO, &oldt);
+            newt = oldt;
+            newt.c_lflag &= ~(ICANON | ECHO);
+            tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+            oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+            fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+            ch = getchar();
+            tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+            fcntl(STDIN_FILENO, F_SETFL, oldf);
+            if (ch != EOF) {
+              if (args.empty())
+                return Value(static_cast<double>(ch));
+              if (ch == static_cast<int>(args[0].toNumber()))
+                return Value(true);
+            }
+            return Value(false);
           });
     }
 

@@ -2,6 +2,7 @@
 #define LFI3A_VALUE_HPP
 
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <variant>
