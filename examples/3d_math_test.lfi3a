@@ -1,0 +1,36 @@
+kteb("=== 3D Math & Advanced StdLib Test (Masfofa & Mowajeha) ===")
+
+// Advanced Math
+kteb("Min(10, 5):", asgher(10, 5))
+kteb("Max(10, 5):", akber(10, 5))
+kteb("Log(1):", logarithm(1))
+kteb("Exp(0):", as(0))
+
+// Vectors (Mowajeha)
+dir v1 = mowajeha3(1, 0, 0)
+dir v2 = mowajeha3(0, 1, 0)
+kteb("Dot(v1, v2):", mo_dorbat(v1, v2)) // 0 (orthogonal)
+dir v3 = mo_ti9ati(v1, v2)
+kteb("Cross(v1, v2):", v3) // [0, 0, 1]
+kteb("Mag(v3):", mo_toul(v3)) // 1
+
+// Matrices (Masfofa)
+dir id = mf_mawjud()
+dir pos = mowajeha3(10, 5, 0)
+dir trans = mf_translate(id, pos)
+kteb("Translated Matrix:", trans)
+
+dir scale = mf_scale(id, mowajeha3(2, 2, 2))
+kteb("Scaled Matrix:", scale)
+
+// Rotation (90 deg around Z)
+dir rot = mf_rotate(id, 1.5708, mowajeha3(0, 0, 1))
+kteb("Rotation Matrix (90 deg Z):", rot)
+
+// Geometry
+dir p1 = mowajeha3(0, 0, 0)
+dir p2 = mowajeha3(3, 4, 0)
+kteb("Distance(p1, p2):", masafa(p1, p2)) // 5
+kteb("Angle(v1, v2):", zawiya(v1, v2)) // 1.5708 (90 deg)
+
+kteb("=== Test Complete ===")
