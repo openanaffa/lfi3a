@@ -120,7 +120,7 @@ std::vector<Token> Lexer::tokenize() {
 
     if (peek() == '/' && peek(1) == '/') {
       skipComment();
-      skipWhitespace();
+      continue;
     }
 
     char c = peek();
@@ -134,13 +134,13 @@ std::vector<Token> Lexer::tokenize() {
     }
 
     // Identifiers and keywords
-    if (isalpha(c) || c == '_') {
+    if (isalpha((unsigned char)c) || c == '_') {
       tokens.push_back(identifier());
       continue;
     }
 
     // Numbers
-    if (isdigit(c)) {
+    if (isdigit((unsigned char)c)) {
       tokens.push_back(number());
       continue;
     }
@@ -222,6 +222,9 @@ std::vector<Token> Lexer::tokenize() {
     } else if (c == ']') {
       advance();
       tokens.push_back({RBRACKET, "]", startLine, startCol});
+    } else if (c == '%') {
+      advance();
+      tokens.push_back({PERCENT, "%", startLine, startCol});
     } else {
       int startLine = line;
       int startCol = column;

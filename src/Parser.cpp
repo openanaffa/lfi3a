@@ -420,7 +420,8 @@ ASTNodePtr Parser::addition() {
 ASTNodePtr Parser::multiplication() {
   ASTNodePtr expr = unary();
 
-  while (peek().type == STAR || peek().type == SLASH) {
+  while (peek().type == STAR || peek().type == SLASH ||
+         peek().type == PERCENT) {
     Token opToken = advance();
     ASTNodePtr right = unary();
 

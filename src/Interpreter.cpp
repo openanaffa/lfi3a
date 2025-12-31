@@ -3,6 +3,7 @@
 #include "Lexer.hpp"
 #include "Parser.hpp"
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <ctime>
@@ -17,7 +18,30 @@
 #include <thread>
 #include <unistd.h>
 
+
 namespace fs = std::filesystem;
+
+static struct termios orig_termios;
+static bool is_raw_mode = false;
+
+static void enableRawMode() {
+  if (is_raw_mode)
+    return;
+  if (tcgetattr(STDIN_FILENO, &orig_termios) == -1)
+    return;
+  struct termios raw = orig_termios;
+  raw.c_lflag &= ~(ECHO | ICANON | ISIG);
+  raw.c_iflag &= ~(IXON | ICRNL);
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+  is_raw_mode = true;
+}
+
+static void disableRawMode() {
+  if (!is_raw_mode)
+    return;
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+  is_raw_mode = false;
+}
 
 Interpreter::Interpreter() {
   globals = std::make_shared<Environment>();
@@ -38,7 +62,7 @@ void Interpreter::run(const std::vector<ASTNodePtr> &nodes,
 void Interpreter::execute(const ASTNodePtr &node) {
   if (!node)
     return;
-
+  
   switch (node->type) {
   case NodeType::VAR_DECL: {
     Value value = evaluate(node->children[0]);
@@ -178,6 +202,11 @@ void Interpreter::execute(const ASTNodePtr &node) {
     break;
   }
 
+  case NodeType::CALL: {
+    evaluate(node);
+    break;
+  }
+
   default:
     break;
   }
@@ -280,6 +309,13 @@ Value Interpreter::evaluate(const ASTNodePtr &node) {
         return Value((double)((long long)l / (long long)r));
       }
       return Value(l / r);
+    } else if (op == "%") {
+      double l = left.toNumber();
+      double r = right.toNumber();
+      if (r == 0) {
+        ErrorHandler::fatal(node->line, node->column, "Modulo by zero");
+      }
+      return Value((double)((long long)l % (long long)r));
     } else if (op == "==") {
       if (left.type != right.type)
         return Value(false);
@@ -383,564 +419,562 @@ Value Interpreter::evaluate(const ASTNodePtr &node) {
     } catch (...) {
       // Not in environment, could be a built-in that we handle below (legacy)
     }
+    break;
+  }
+  }
 
-    void Interpreter::registerBuiltin(const std::string &name,
-                                      NativeFunc func) {
-      globals->define(name, Value(func));
+  return Value();
+}
+
+void Interpreter::registerBuiltin(const std::string &name, NativeFunc func) {
+  globals->define(name, Value(func));
+}
+
+void Interpreter::registerBuiltins() {
+  // Essentials
+  registerBuiltin("tul", [](const std::vector<Value> &args) -> Value {
+    if (args.empty())
+      return Value(0.0);
+    if (args[0].type == ValueType::STRING) {
+      return Value((double)std::get<std::string>(args[0].data).length());
+    } else if (args[0].type == ValueType::ARRAY) {
+      return Value((double)std::get<ArrayPtr>(args[0].data)->size());
     }
+    return Value(0.0);
+  });
 
-    void Interpreter::registerBuiltins() {
-      // Essentials
-      registerBuiltin("tul", [](const std::vector<Value> &args) -> Value {
-        if (args.empty())
-          return Value(0.0);
-        if (args[0].type == ValueType::STRING) {
-          return Value((double)std::get<std::string>(args[0].data).length());
-        } else if (args[0].type == ValueType::ARRAY) {
-          return Value((double)std::get<ArrayPtr>(args[0].data)->size());
-        }
-        return Value(0.0);
+  registerBuiltin("naw3", [](const std::vector<Value> &args) -> Value {
+    if (args.empty())
+      return Value("nil");
+    switch (args[0].type) {
+    case ValueType::NUMBER:
+      return Value("number");
+    case ValueType::STRING:
+      return Value("string");
+    case ValueType::BOOLEAN:
+      return Value("bool");
+    case ValueType::ARRAY:
+      return Value("array");
+    case ValueType::NIL:
+      return Value("nil");
+    default:
+      return Value("unknown");
+    }
+  });
+
+  registerBuiltin("ra9m", [](const std::vector<Value> &args) -> Value {
+    if (args.empty())
+      return Value(0.0);
+    return Value(args[0].toNumber());
+  });
+
+  registerBuiltin("kelma", [](const std::vector<Value> &args) -> Value {
+    if (args.empty())
+      return Value("");
+    return Value(args[0].toString());
+  });
+
+  registerBuiltin("wa9t", [](const std::vector<Value> &args) -> Value {
+    auto now = std::chrono::system_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                  now.time_since_epoch())
+                  .count();
+    return Value((double)ms);
+  });
+
+  // Math Library
+  registerBuiltin("motla9",
+                  [](const std::vector<Value> &args) -> Value { // abs
+                    if (args.empty())
+                      return Value(0.0);
+                    return Value(std::abs(args[0].toNumber()));
+                  });
+
+  registerBuiltin("dwer",
+                  [](const std::vector<Value> &args) -> Value { // round
+                    if (args.empty())
+                      return Value(0.0);
+                    return Value(std::round(args[0].toNumber()));
+                  });
+
+  registerBuiltin("ls9ef",
+                  [](const std::vector<Value> &args) -> Value { // ceil
+                    if (args.empty())
+                      return Value(0.0);
+                    return Value(std::ceil(args[0].toNumber()));
+                  });
+
+  registerBuiltin("l9a3",
+                  [](const std::vector<Value> &args) -> Value { // floor
+                    if (args.empty())
+                      return Value(0.0);
+                    return Value(std::floor(args[0].toNumber()));
+                  });
+
+  registerBuiltin("jdr",
+                  [](const std::vector<Value> &args) -> Value { // sqrt
+                    if (args.empty())
+                      return Value(0.0);
+                    return Value(std::sqrt(args[0].toNumber()));
+                  });
+
+  registerBuiltin("os", [](const std::vector<Value> &args) -> Value { // pow
+    if (args.size() < 2)
+      return Value(0.0);
+    return Value(std::pow(args[0].toNumber(), args[1].toNumber()));
+  });
+
+  registerBuiltin("3chwa2i",
+                  [](const std::vector<Value> &args) -> Value { // rand
+                    return Value((double)std::rand() / RAND_MAX);
+                  });
+
+  registerBuiltin("asgher", [](const std::vector<Value> &args) -> Value { // min
+    if (args.size() < 2)
+      return args.empty() ? Value(0.0) : args[0];
+    return Value(std::min(args[0].toNumber(), args[1].toNumber()));
+  });
+
+  registerBuiltin("akber", [](const std::vector<Value> &args) -> Value { // max
+    if (args.size() < 2)
+      return args.empty() ? Value(0.0) : args[0];
+    return Value(std::max(args[0].toNumber(), args[1].toNumber()));
+  });
+
+  registerBuiltin("logarithm",
+                  [](const std::vector<Value> &args) -> Value { // log
+                    if (args.empty())
+                      return Value(0.0);
+                    return Value(std::log(args[0].toNumber()));
+                  });
+
+  registerBuiltin("as", [](const std::vector<Value> &args) -> Value { // exp
+    if (args.empty())
+      return Value(0.0);
+    return Value(std::exp(args[0].toNumber()));
+  });
+
+  registerBuiltin("atan2", [](const std::vector<Value> &args) -> Value {
+    if (args.size() < 2)
+      return Value(0.0);
+    return Value(std::atan2(args[0].toNumber(), args[1].toNumber()));
+  });
+
+  // Vector Algebra (Mojiha)
+  registerBuiltin("mowajeha3",
+                  [](const std::vector<Value> &args) -> Value { // vec3
+                    auto arr = std::make_shared<std::vector<Value>>();
+                    for (int i = 0; i < 3; ++i) {
+                      arr->push_back(args.size() > (size_t)i ? args[i]
+                                                             : Value(0.0));
+                    }
+                    return Value(arr);
+                  });
+
+  registerBuiltin("mo_dorbat",
+                  [](const std::vector<Value> &args) -> Value { // dot
+                    if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
+                        args[1].type != ValueType::ARRAY)
+                      return Value(0.0);
+                    auto a = std::get<ArrayPtr>(args[0].data);
+                    auto b = std::get<ArrayPtr>(args[1].data);
+                    double res = 0;
+                    for (size_t i = 0; i < std::min(a->size(), b->size());
+                         ++i) {
+                      res += (*a)[i].toNumber() * (*b)[i].toNumber();
+                    }
+                    return Value(res);
+                  });
+
+  registerBuiltin(
+      "mo_ti9ati",
+      [](const std::vector<Value> &args) -> Value { // cross
+        if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
+            args[1].type != ValueType::ARRAY)
+          return Value();
+        auto a = std::get<ArrayPtr>(args[0].data);
+        auto b = std::get<ArrayPtr>(args[1].data);
+        if (a->size() < 3 || b->size() < 3)
+          return Value();
+        auto res = std::make_shared<std::vector<Value>>();
+        res->push_back(Value((*a)[1].toNumber() * (*b)[2].toNumber() -
+                             (*a)[2].toNumber() * (*b)[1].toNumber()));
+        res->push_back(Value((*a)[2].toNumber() * (*b)[0].toNumber() -
+                             (*a)[0].toNumber() * (*b)[2].toNumber()));
+        res->push_back(Value((*a)[0].toNumber() * (*b)[1].toNumber() -
+                             (*a)[1].toNumber() * (*b)[0].toNumber()));
+        return Value(res);
       });
 
-      registerBuiltin("naw3", [](const std::vector<Value> &args) -> Value {
-        if (args.empty())
-          return Value("nil");
-        switch (args[0].type) {
-        case ValueType::NUMBER:
-          return Value("number");
-        case ValueType::STRING:
-          return Value("string");
-        case ValueType::BOOLEAN:
-          return Value("bool");
-        case ValueType::ARRAY:
-          return Value("array");
-        case ValueType::NIL:
-          return Value("nil");
-        default:
-          return Value("unknown");
-        }
-      });
+  registerBuiltin("mo_toul",
+                  [](const std::vector<Value> &args) -> Value { // magnitude
+                    if (args.empty() || args[0].type != ValueType::ARRAY)
+                      return Value(0.0);
+                    auto a = std::get<ArrayPtr>(args[0].data);
+                    double res = 0;
+                    for (const auto &v : *a)
+                      res += v.toNumber() * v.toNumber();
+                    return Value(std::sqrt(res));
+                  });
 
-      registerBuiltin("ra9m", [](const std::vector<Value> &args) -> Value {
-        if (args.empty())
-          return Value(0.0);
-        return Value(args[0].toNumber());
-      });
+  registerBuiltin("mo_nidam",
+                  [](const std::vector<Value> &args) -> Value { // normalize
+                    if (args.empty() || args[0].type != ValueType::ARRAY)
+                      return Value();
+                    auto a = std::get<ArrayPtr>(args[0].data);
+                    double len = 0;
+                    for (const auto &v : *a)
+                      len += v.toNumber() * v.toNumber();
+                    len = std::sqrt(len);
+                    if (len == 0)
+                      return args[0];
+                    auto res = std::make_shared<std::vector<Value>>();
+                    for (const auto &v : *a)
+                      res->push_back(Value(v.toNumber() / len));
+                    return Value(res);
+                  });
 
-      registerBuiltin("kelma", [](const std::vector<Value> &args) -> Value {
-        if (args.empty())
-          return Value("");
-        return Value(args[0].toString());
-      });
+  // Matrix Operations (Masfofa)
+  registerBuiltin("masfofa4",
+                  [](const std::vector<Value> &args) -> Value { // mat4
+                    auto arr = std::make_shared<std::vector<Value>>();
+                    for (int i = 0; i < 16; ++i) {
+                      arr->push_back(args.size() > (size_t)i ? args[i]
+                                                             : Value(0.0));
+                    }
+                    return Value(arr);
+                  });
 
-      registerBuiltin("wa9t", [](const std::vector<Value> &args) -> Value {
-        auto now = std::chrono::system_clock::now();
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                      now.time_since_epoch())
-                      .count();
-        return Value((double)ms);
-      });
+  registerBuiltin("mf_mawjud",
+                  [](const std::vector<Value> &args) -> Value { // identity
+                    auto arr = std::make_shared<std::vector<Value>>();
+                    for (int i = 0; i < 16; ++i) {
+                      arr->push_back(Value((i % 5 == 0) ? 1.0 : 0.0));
+                    }
+                    return Value(arr);
+                  });
 
-      // Math Library
-      registerBuiltin("motla9",
-                      [](const std::vector<Value> &args) -> Value { // abs
-                        if (args.empty())
-                          return Value(0.0);
-                        return Value(std::abs(args[0].toNumber()));
-                      });
-
-      registerBuiltin("dwer",
-                      [](const std::vector<Value> &args) -> Value { // round
-                        if (args.empty())
-                          return Value(0.0);
-                        return Value(std::round(args[0].toNumber()));
-                      });
-
-      registerBuiltin("ls9ef",
-                      [](const std::vector<Value> &args) -> Value { // ceil
-                        if (args.empty())
-                          return Value(0.0);
-                        return Value(std::ceil(args[0].toNumber()));
-                      });
-
-      registerBuiltin("l9a3",
-                      [](const std::vector<Value> &args) -> Value { // floor
-                        if (args.empty())
-                          return Value(0.0);
-                        return Value(std::floor(args[0].toNumber()));
-                      });
-
-      registerBuiltin("jdr",
-                      [](const std::vector<Value> &args) -> Value { // sqrt
-                        if (args.empty())
-                          return Value(0.0);
-                        return Value(std::sqrt(args[0].toNumber()));
-                      });
-
-      registerBuiltin("os", [](const std::vector<Value> &args) -> Value { // pow
-        if (args.size() < 2)
-          return Value(0.0);
-        return Value(std::pow(args[0].toNumber(), args[1].toNumber()));
-      });
-
-      registerBuiltin("3chwa2i",
-                      [](const std::vector<Value> &args) -> Value { // rand
-                        return Value((double)std::rand() / RAND_MAX);
-                      });
-
-      registerBuiltin(
-          "asgher", [](const std::vector<Value> &args) -> Value { // min
-            if (args.size() < 2)
-              return args.empty() ? Value(0.0) : args[0];
-            return Value(std::min(args[0].toNumber(), args[1].toNumber()));
-          });
-
-      registerBuiltin(
-          "akber", [](const std::vector<Value> &args) -> Value { // max
-            if (args.size() < 2)
-              return args.empty() ? Value(0.0) : args[0];
-            return Value(std::max(args[0].toNumber(), args[1].toNumber()));
-          });
-
-      registerBuiltin("logarithm",
-                      [](const std::vector<Value> &args) -> Value { // log
-                        if (args.empty())
-                          return Value(0.0);
-                        return Value(std::log(args[0].toNumber()));
-                      });
-
-      registerBuiltin("as", [](const std::vector<Value> &args) -> Value { // exp
-        if (args.empty())
-          return Value(0.0);
-        return Value(std::exp(args[0].toNumber()));
-      });
-
-      registerBuiltin("atan2", [](const std::vector<Value> &args) -> Value {
-        if (args.size() < 2)
-          return Value(0.0);
-        return Value(std::atan2(args[0].toNumber(), args[1].toNumber()));
-      });
-
-      // Vector Algebra (Mojiha)
-      registerBuiltin("mowajeha3",
-                      [](const std::vector<Value> &args) -> Value { // vec3
-                        auto arr = std::make_shared<std::vector<Value>>();
-                        for (int i = 0; i < 3; ++i) {
-                          arr->push_back(args.size() > (size_t)i ? args[i]
-                                                                 : Value(0.0));
+  registerBuiltin("mf_dorbat",
+                  [](const std::vector<Value> &args) -> Value { // mat_multiply
+                    if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
+                        args[1].type != ValueType::ARRAY)
+                      return Value();
+                    auto a = std::get<ArrayPtr>(args[0].data);
+                    auto b = std::get<ArrayPtr>(args[1].data);
+                    if (a->size() < 16 || b->size() < 16)
+                      return Value();
+                    auto res = std::make_shared<std::vector<Value>>();
+                    for (int i = 0; i < 4; ++i) {
+                      for (int j = 0; j < 4; ++j) {
+                        double sum = 0;
+                        for (int k = 0; k < 4; ++k) {
+                          sum += (*a)[i * 4 + k].toNumber() *
+                                 (*b)[k * 4 + j].toNumber();
                         }
-                        return Value(arr);
-                      });
+                        res->push_back(Value(sum));
+                      }
+                    }
+                    return Value(res);
+                  });
 
-      registerBuiltin(
-          "mo_dorbat",
-          [](const std::vector<Value> &args) -> Value { // dot
-            if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
-                args[1].type != ValueType::ARRAY)
-              return Value(0.0);
-            auto a = std::get<ArrayPtr>(args[0].data);
-            auto b = std::get<ArrayPtr>(args[1].data);
-            double res = 0;
-            for (size_t i = 0; i < std::min(a->size(), b->size()); ++i) {
-              res += (*a)[i].toNumber() * (*b)[i].toNumber();
-            }
-            return Value(res);
-          });
+  registerBuiltin("mf_translate",
+                  [](const std::vector<Value> &args) -> Value { // translate
+                    if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
+                        args[1].type != ValueType::ARRAY)
+                      return Value();
+                    auto m = std::get<ArrayPtr>(args[0].data);
+                    auto v = std::get<ArrayPtr>(args[1].data);
+                    if (m->size() < 16 || v->size() < 3)
+                      return Value();
+                    auto res = std::make_shared<std::vector<Value>>(*m);
+                    for (int i = 0; i < 4; ++i) {
+                      (*res)[12 + i] =
+                          Value((*m)[12 + i].toNumber() +
+                                (*m)[i].toNumber() * (*v)[0].toNumber() +
+                                (*m)[4 + i].toNumber() * (*v)[1].toNumber() +
+                                (*m)[8 + i].toNumber() * (*v)[2].toNumber());
+                    }
+                    return Value(res);
+                  });
 
-      registerBuiltin(
-          "mo_ti9ati",
-          [](const std::vector<Value> &args) -> Value { // cross
-            if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
-                args[1].type != ValueType::ARRAY)
-              return Value();
-            auto a = std::get<ArrayPtr>(args[0].data);
-            auto b = std::get<ArrayPtr>(args[1].data);
-            if (a->size() < 3 || b->size() < 3)
-              return Value();
-            auto res = std::make_shared<std::vector<Value>>();
-            res->push_back(Value((*a)[1].toNumber() * (*b)[2].toNumber() -
-                                 (*a)[2].toNumber() * (*b)[1].toNumber()));
-            res->push_back(Value((*a)[2].toNumber() * (*b)[0].toNumber() -
-                                 (*a)[0].toNumber() * (*b)[2].toNumber()));
-            res->push_back(Value((*a)[0].toNumber() * (*b)[1].toNumber() -
-                                 (*a)[1].toNumber() * (*b)[0].toNumber()));
-            return Value(res);
-          });
+  registerBuiltin("mf_scale",
+                  [](const std::vector<Value> &args) -> Value { // scale
+                    if (args.size() < 2 || args[0].type != ValueType::ARRAY)
+                      return Value();
+                    auto m = std::get<ArrayPtr>(args[0].data);
+                    if (m->size() < 16)
+                      return Value();
+                    double sx, sy, sz;
+                    if (args[1].type == ValueType::ARRAY) {
+                      auto v = std::get<ArrayPtr>(args[1].data);
+                      sx = (*v)[0].toNumber();
+                      sy = v->size() > 1 ? (*v)[1].toNumber() : sx;
+                      sz = v->size() > 2 ? (*v)[2].toNumber() : 1.0;
+                    } else {
+                      sx = sy = sz = args[1].toNumber();
+                    }
+                    auto res = std::make_shared<std::vector<Value>>(*m);
+                    for (int i = 0; i < 4; ++i)
+                      (*res)[i] = Value((*m)[i].toNumber() * sx);
+                    for (int i = 0; i < 4; ++i)
+                      (*res)[4 + i] = Value((*m)[4 + i].toNumber() * sy);
+                    for (int i = 0; i < 4; ++i)
+                      (*res)[8 + i] = Value((*m)[8 + i].toNumber() * sz);
+                    return Value(res);
+                  });
 
-      registerBuiltin("mo_toul",
-                      [](const std::vector<Value> &args) -> Value { // magnitude
-                        if (args.empty() || args[0].type != ValueType::ARRAY)
-                          return Value(0.0);
-                        auto a = std::get<ArrayPtr>(args[0].data);
-                        double res = 0;
-                        for (const auto &v : *a)
-                          res += v.toNumber() * v.toNumber();
-                        return Value(std::sqrt(res));
-                      });
+  registerBuiltin(
+      "mf_rotate",
+      [](const std::vector<Value> &args) -> Value { // rotate
+        if (args.size() < 3 || args[0].type != ValueType::ARRAY ||
+            args[2].type != ValueType::ARRAY)
+          return Value();
+        auto m = std::get<ArrayPtr>(args[0].data);
+        double angle = args[1].toNumber();
+        auto axis = std::get<ArrayPtr>(args[2].data);
+        if (m->size() < 16 || axis->size() < 3)
+          return Value();
 
-      registerBuiltin("mo_nidam",
-                      [](const std::vector<Value> &args) -> Value { // normalize
-                        if (args.empty() || args[0].type != ValueType::ARRAY)
-                          return Value();
-                        auto a = std::get<ArrayPtr>(args[0].data);
-                        double len = 0;
-                        for (const auto &v : *a)
-                          len += v.toNumber() * v.toNumber();
-                        len = std::sqrt(len);
-                        if (len == 0)
-                          return args[0];
-                        auto res = std::make_shared<std::vector<Value>>();
-                        for (const auto &v : *a)
-                          res->push_back(Value(v.toNumber() / len));
-                        return Value(res);
-                      });
+        double x = (*axis)[0].toNumber();
+        double y = (*axis)[1].toNumber();
+        double z = (*axis)[2].toNumber();
+        double s = std::sin(angle);
+        double c = std::cos(angle);
+        double oc = 1.0 - c;
 
-      // Matrix Operations (Masfofa)
-      registerBuiltin("masfofa4",
-                      [](const std::vector<Value> &args) -> Value { // mat4
-                        auto arr = std::make_shared<std::vector<Value>>();
-                        for (int i = 0; i < 16; ++i) {
-                          arr->push_back(args.size() > (size_t)i ? args[i]
-                                                                 : Value(0.0));
-                        }
-                        return Value(arr);
-                      });
+        auto r = std::make_shared<std::vector<Value>>(16, Value(0.0));
+        (*r)[0] = Value(x * x * oc + c);
+        (*r)[1] = Value(x * y * oc - z * s);
+        (*r)[2] = Value(x * z * oc + y * s);
+        (*r)[4] = Value(y * x * oc + z * s);
+        (*r)[5] = Value(y * y * oc + c);
+        (*r)[6] = Value(y * z * oc - x * s);
+        (*r)[8] = Value(z * x * oc - y * s);
+        (*r)[9] = Value(z * y * oc + x * s);
+        (*r)[10] = Value(z * z * oc + c);
+        (*r)[15] = Value(1.0);
 
-      registerBuiltin("mf_mawjud",
-                      [](const std::vector<Value> &args) -> Value { // identity
-                        auto arr = std::make_shared<std::vector<Value>>();
-                        for (int i = 0; i < 16; ++i) {
-                          arr->push_back(Value((i % 5 == 0) ? 1.0 : 0.0));
-                        }
-                        return Value(arr);
-                      });
-
-      registerBuiltin(
-          "mf_dorbat",
-          [](const std::vector<Value> &args) -> Value { // mat_multiply
-            if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
-                args[1].type != ValueType::ARRAY)
-              return Value();
-            auto a = std::get<ArrayPtr>(args[0].data);
-            auto b = std::get<ArrayPtr>(args[1].data);
-            if (a->size() < 16 || b->size() < 16)
-              return Value();
-            auto res = std::make_shared<std::vector<Value>>();
-            for (int i = 0; i < 4; ++i) {
-              for (int j = 0; j < 4; ++j) {
-                double sum = 0;
-                for (int k = 0; k < 4; ++k) {
-                  sum +=
-                      (*a)[i * 4 + k].toNumber() * (*b)[k * 4 + j].toNumber();
-                }
-                res->push_back(Value(sum));
-              }
-            }
-            return Value(res);
-          });
-
-      registerBuiltin(
-          "mf_translate",
-          [](const std::vector<Value> &args) -> Value { // translate
-            if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
-                args[1].type != ValueType::ARRAY)
-              return Value();
-            auto m = std::get<ArrayPtr>(args[0].data);
-            auto v = std::get<ArrayPtr>(args[1].data);
-            if (m->size() < 16 || v->size() < 3)
-              return Value();
-            auto res = std::make_shared<std::vector<Value>>(*m);
-            for (int i = 0; i < 4; ++i) {
-              (*res)[12 + i] =
-                  Value((*m)[12 + i].toNumber() +
-                        (*m)[i].toNumber() * (*v)[0].toNumber() +
-                        (*m)[4 + i].toNumber() * (*v)[1].toNumber() +
-                        (*m)[8 + i].toNumber() * (*v)[2].toNumber());
-            }
-            return Value(res);
-          });
-
-      registerBuiltin("mf_scale",
-                      [](const std::vector<Value> &args) -> Value { // scale
-                        if (args.size() < 2 || args[0].type != ValueType::ARRAY)
-                          return Value();
-                        auto m = std::get<ArrayPtr>(args[0].data);
-                        if (m->size() < 16)
-                          return Value();
-                        double sx, sy, sz;
-                        if (args[1].type == ValueType::ARRAY) {
-                          auto v = std::get<ArrayPtr>(args[1].data);
-                          sx = (*v)[0].toNumber();
-                          sy = v->size() > 1 ? (*v)[1].toNumber() : sx;
-                          sz = v->size() > 2 ? (*v)[2].toNumber() : 1.0;
-                        } else {
-                          sx = sy = sz = args[1].toNumber();
-                        }
-                        auto res = std::make_shared<std::vector<Value>>(*m);
-                        for (int i = 0; i < 4; ++i)
-                          (*res)[i] = Value((*m)[i].toNumber() * sx);
-                        for (int i = 0; i < 4; ++i)
-                          (*res)[4 + i] = Value((*m)[4 + i].toNumber() * sy);
-                        for (int i = 0; i < 4; ++i)
-                          (*res)[8 + i] = Value((*m)[8 + i].toNumber() * sz);
-                        return Value(res);
-                      });
-
-      registerBuiltin(
-          "mf_rotate",
-          [](const std::vector<Value> &args) -> Value { // rotate
-            if (args.size() < 3 || args[0].type != ValueType::ARRAY ||
-                args[2].type != ValueType::ARRAY)
-              return Value();
-            auto m = std::get<ArrayPtr>(args[0].data);
-            double angle = args[1].toNumber();
-            auto axis = std::get<ArrayPtr>(args[2].data);
-            if (m->size() < 16 || axis->size() < 3)
-              return Value();
-
-            double x = (*axis)[0].toNumber();
-            double y = (*axis)[1].toNumber();
-            double z = (*axis)[2].toNumber();
-            double s = std::sin(angle);
-            double c = std::cos(angle);
-            double oc = 1.0 - c;
-
-            auto r = std::make_shared<std::vector<Value>>(16, Value(0.0));
-            (*r)[0] = Value(x * x * oc + c);
-            (*r)[1] = Value(x * y * oc - z * s);
-            (*r)[2] = Value(x * z * oc + y * s);
-            (*r)[4] = Value(y * x * oc + z * s);
-            (*r)[5] = Value(y * y * oc + c);
-            (*r)[6] = Value(y * z * oc - x * s);
-            (*r)[8] = Value(z * x * oc - y * s);
-            (*r)[9] = Value(z * y * oc + x * s);
-            (*r)[10] = Value(z * z * oc + c);
-            (*r)[15] = Value(1.0);
-
-            auto res = std::make_shared<std::vector<Value>>();
-            for (int i = 0; i < 4; ++i) {
-              for (int j = 0; j < 4; ++j) {
-                double sum = 0;
-                for (int k = 0; k < 4; ++k) {
-                  sum +=
-                      (*m)[i * 4 + k].toNumber() * (*r)[k * 4 + j].toNumber();
-                }
-                res->push_back(Value(sum));
-              }
-            }
-            return Value(res);
-          });
-
-      registerBuiltin(
-          "masafa",
-          [](const std::vector<Value> &args) -> Value { // distance
-            if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
-                args[1].type != ValueType::ARRAY)
-              return Value(0.0);
-            auto a = std::get<ArrayPtr>(args[0].data);
-            auto b = std::get<ArrayPtr>(args[1].data);
+        auto res = std::make_shared<std::vector<Value>>();
+        for (int i = 0; i < 4; ++i) {
+          for (int j = 0; j < 4; ++j) {
             double sum = 0;
-            for (size_t i = 0; i < std::min(a->size(), b->size()); ++i) {
-              double d = (*a)[i].toNumber() - (*b)[i].toNumber();
-              sum += d * d;
+            for (int k = 0; k < 4; ++k) {
+              sum += (*m)[i * 4 + k].toNumber() * (*r)[k * 4 + j].toNumber();
             }
-            return Value(std::sqrt(sum));
-          });
+            res->push_back(Value(sum));
+          }
+        }
+        return Value(res);
+      });
 
-      registerBuiltin(
-          "zawiya",
-          [](const std::vector<Value> &args) -> Value { // angle
-            if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
-                args[1].type != ValueType::ARRAY)
-              return Value(0.0);
-            auto a = std::get<ArrayPtr>(args[0].data);
-            auto b = std::get<ArrayPtr>(args[1].data);
-            double dot = 0, la = 0, lb = 0;
-            for (size_t i = 0; i < std::min(a->size(), b->size()); ++i) {
-              double av = (*a)[i].toNumber();
-              double bv = (*b)[i].toNumber();
-              dot += av * bv;
-              la += av * av;
-              lb += bv * bv;
-            }
-            double mag = std::sqrt(la) * std::sqrt(lb);
-            if (mag == 0)
-              return Value(0.0);
-            double cosTheta = dot / mag;
-            if (cosTheta > 1.0)
-              cosTheta = 1.0;
-            if (cosTheta < -1.0)
-              cosTheta = -1.0;
-            return Value(std::acos(cosTheta));
-          });
+  registerBuiltin("masafa",
+                  [](const std::vector<Value> &args) -> Value { // distance
+                    if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
+                        args[1].type != ValueType::ARRAY)
+                      return Value(0.0);
+                    auto a = std::get<ArrayPtr>(args[0].data);
+                    auto b = std::get<ArrayPtr>(args[1].data);
+                    double sum = 0;
+                    for (size_t i = 0; i < std::min(a->size(), b->size());
+                         ++i) {
+                      double d = (*a)[i].toNumber() - (*b)[i].toNumber();
+                      sum += d * d;
+                    }
+                    return Value(std::sqrt(sum));
+                  });
 
-      registerBuiltin("ta9rib",
-                      [](const std::vector<Value> &args) -> Value { // lerp
-                        if (args.size() < 3)
-                          return Value(0.0);
-                        double a = args[0].toNumber();
-                        double b = args[1].toNumber();
-                        double t = args[2].toNumber();
-                        return Value(a + (b - a) * t);
-                      });
+  registerBuiltin("zawiya",
+                  [](const std::vector<Value> &args) -> Value { // angle
+                    if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
+                        args[1].type != ValueType::ARRAY)
+                      return Value(0.0);
+                    auto a = std::get<ArrayPtr>(args[0].data);
+                    auto b = std::get<ArrayPtr>(args[1].data);
+                    double dot = 0, la = 0, lb = 0;
+                    for (size_t i = 0; i < std::min(a->size(), b->size());
+                         ++i) {
+                      double av = (*a)[i].toNumber();
+                      double bv = (*b)[i].toNumber();
+                      dot += av * bv;
+                      la += av * av;
+                      lb += bv * bv;
+                    }
+                    double mag = std::sqrt(la) * std::sqrt(lb);
+                    if (mag == 0)
+                      return Value(0.0);
+                    double cosTheta = dot / mag;
+                    if (cosTheta > 1.0)
+                      cosTheta = 1.0;
+                    if (cosTheta < -1.0)
+                      cosTheta = -1.0;
+                    return Value(std::acos(cosTheta));
+                  });
 
-      registerBuiltin("7essar",
-                      [](const std::vector<Value> &args) -> Value { // clamp
-                        if (args.size() < 3)
-                          return Value(0.0);
-                        double v = args[0].toNumber();
-                        double min = args[1].toNumber();
-                        double max = args[2].toNumber();
-                        return Value(std::clamp(v, min, max));
-                      });
+  registerBuiltin("ta9rib",
+                  [](const std::vector<Value> &args) -> Value { // lerp
+                    if (args.size() < 3)
+                      return Value(0.0);
+                    double a = args[0].toNumber();
+                    double b = args[1].toNumber();
+                    double t = args[2].toNumber();
+                    return Value(a + (b - a) * t);
+                  });
 
-      registerBuiltin(
-          "in3ikas", [](const std::vector<Value> &args) -> Value { // reflect
-            if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
-                args[1].type != ValueType::ARRAY)
-              return Value();
-            auto v = std::get<ArrayPtr>(args[0].data);
-            auto n = std::get<ArrayPtr>(args[1].data);
-            double dot = 0;
-            size_t size = std::min(v->size(), n->size());
-            for (size_t i = 0; i < size; ++i) {
-              dot += (*v)[i].toNumber() * (*n)[i].toNumber();
-            }
-            auto res = std::make_shared<std::vector<Value>>();
-            for (size_t i = 0; i < v->size(); ++i) {
-              double val = (*v)[i].toNumber() - 2 * dot * (*n)[i].toNumber();
-              res->push_back(Value(val));
-            }
-            return Value(res);
-          });
+  registerBuiltin("7essar",
+                  [](const std::vector<Value> &args) -> Value { // clamp
+                    if (args.size() < 3)
+                      return Value(0.0);
+                    double v = args[0].toNumber();
+                    double min = args[1].toNumber();
+                    double max = args[2].toNumber();
+                    return Value(std::clamp(v, min, max));
+                  });
 
-      // System Utilities
-      registerBuiltin(
-          "na3ess", [](const std::vector<Value> &args) -> Value { // sleep
-            if (!args.empty()) {
-              long long ms = static_cast<long long>(args[0].toNumber());
-              std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-            }
-            return Value();
-          });
+  registerBuiltin(
+      "in3ikas", [](const std::vector<Value> &args) -> Value { // reflect
+        if (args.size() < 2 || args[0].type != ValueType::ARRAY ||
+            args[1].type != ValueType::ARRAY)
+          return Value();
+        auto v = std::get<ArrayPtr>(args[0].data);
+        auto n = std::get<ArrayPtr>(args[1].data);
+        double dot = 0;
+        size_t size = std::min(v->size(), n->size());
+        for (size_t i = 0; i < size; ++i) {
+          dot += (*v)[i].toNumber() * (*n)[i].toNumber();
+        }
+        auto res = std::make_shared<std::vector<Value>>();
+        for (size_t i = 0; i < v->size(); ++i) {
+          double val = (*v)[i].toNumber() - 2 * dot * (*n)[i].toNumber();
+          res->push_back(Value(val));
+        }
+        return Value(res);
+      });
 
-      // Game Development (Terminal-based ANSI)
-      registerBuiltin(
-          "chacha_7ell",
-          [](const std::vector<Value> &args) -> Value { // open screen
-            std::cout << "\033[?1049h\033[H\033[?25l"; // Alt buffer, Home, Hide
-                                                       // cursor
-            return Value();
-          });
+  // System Utilities
+  registerBuiltin(
+      "na3ess", [](const std::vector<Value> &args) -> Value { // sleep
+        if (!args.empty()) {
+          long long ms = static_cast<long long>(args[0].toNumber());
+          std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+        }
+        return Value();
+      });
 
-      registerBuiltin(
-          "chacha_sedd",
-          [](const std::vector<Value> &args) -> Value { // close screen
-            std::cout << "\033[?1049l\033[?25h"; // Normal buffer, Show cursor
-            return Value();
-          });
+  // Game Development (Terminal-based ANSI)
+  registerBuiltin("chacha_7ell",
+                  [](const std::vector<Value> &args) -> Value { // open screen
+                    std::cout
+                        << "\033[?1049h\033[H\033[?25l"; // Alt buffer, Home,
+                                                         // Hide cursor
+                    return Value();
+                  });
 
-      registerBuiltin("chacha_imsah",
-                      [](const std::vector<Value> &args) -> Value { // clear
-                        std::cout << "\033[2J\033[H";
-                        return Value();
-                      });
+  registerBuiltin("chacha_sedd",
+                  [](const std::vector<Value> &args) -> Value { // close screen
+                    std::cout
+                        << "\033[?1049l\033[?25h"; // Normal buffer, Show cursor
+                    return Value();
+                  });
 
-      registerBuiltin("chacha_3red",
-                      [](const std::vector<Value> &args) -> Value { // flush
-                        std::cout << std::flush;
-                        return Value();
-                      });
+  registerBuiltin("chacha_imsah",
+                  [](const std::vector<Value> &args) -> Value { // clear
+                    std::cout << "\033[2J\033[H";
+                    return Value();
+                  });
 
-      registerBuiltin("rsem_mrabba3",
-                      [](const std::vector<Value> &args) -> Value { // rect
-                        if (args.size() < 4)
-                          return Value();
-                        int x = static_cast<int>(args[0].toNumber());
-                        int y = static_cast<int>(args[1].toNumber());
-                        int w = static_cast<int>(args[2].toNumber());
-                        int h = static_cast<int>(args[3].toNumber());
-                        std::string color = "\033[47m"; // Default white
-                        if (args.size() > 4) {
-                          double c = args[4].toNumber();
-                          if (c == 1)
-                            color = "\033[41m"; // Red
-                          if (c == 2)
-                            color = "\033[42m"; // Green
-                          if (c == 3)
-                            color = "\033[44m"; // Blue
-                        }
-                        for (int i = 0; i < h; ++i) {
-                          std::cout << "\033[" << (y + i + 1) << ";" << (x + 1)
-                                    << "H" << color;
-                          for (int j = 0; j < w; ++j)
-                            std::cout << " ";
-                          std::cout << "\033[0m";
-                        }
-                        return Value();
-                      });
+  registerBuiltin("chacha_3red",
+                  [](const std::vector<Value> &args) -> Value { // flush
+                    std::cout << std::flush;
+                    return Value();
+                  });
 
-      registerBuiltin(
-          "wrack_3la",
-          [](const std::vector<Value> &args) -> Value { // key pressed
-            struct termios oldt, newt;
-            int ch;
-            int oldf;
-            tcgetattr(STDIN_FILENO, &oldt);
-            newt = oldt;
-            newt.c_lflag &= ~(ICANON | ECHO);
-            tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-            oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-            fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-            ch = getchar();
-            tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-            fcntl(STDIN_FILENO, F_SETFL, oldf);
-            if (ch != EOF) {
-              if (args.empty())
-                return Value(static_cast<double>(ch));
-              if (ch == static_cast<int>(args[0].toNumber()))
-                return Value(true);
-            }
-            return Value(false);
-          });
-    }
+  registerBuiltin("rsem_mrabba3",
+                  [](const std::vector<Value> &args) -> Value { // rect
+                    if (args.size() < 4)
+                      return Value();
+                    int x = static_cast<int>(args[0].toNumber());
+                    int y = static_cast<int>(args[1].toNumber());
+                    int w = static_cast<int>(args[2].toNumber());
+                    int h = static_cast<int>(args[3].toNumber());
+                    std::string color = "\033[47m"; // Default white
+                    if (args.size() > 4) {
+                      double c = args[4].toNumber();
+                      if (c == 1)
+                        color = "\033[41m"; // Red
+                      if (c == 2)
+                        color = "\033[42m"; // Green
+                      if (c == 3)
+                        color = "\033[44m"; // Blue
+                    }
+                    for (int i = 0; i < h; ++i) {
+                      std::cout << "\033[" << (y + i + 1) << ";" << (x + 1) << "H" << color;
+                      for (int j = 0; j < w; ++j)
+                        std::cout << " ";
+                      std::cout << "\033[0m";
+                    }
+                    return Value();
+                  });
 
-    void Interpreter::loadModule(const std::string &moduleName) {
-      if (importedModules.find(moduleName) != importedModules.end())
-        return;
+  registerBuiltin("wrack_3la",
+                  [](const std::vector<Value> &args) -> Value { // key pressed
+                    struct termios oldt, newt;
+                    int ch;
+                    int oldf;
+                    tcgetattr(STDIN_FILENO, &oldt);
+                    newt = oldt;
+                    newt.c_lflag &= ~(ICANON | ECHO);
+                    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+                    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+                    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+                    ch = getchar();
+                    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+                    fcntl(STDIN_FILENO, F_SETFL, oldf);
+                    if (ch != EOF) {
+                      if (args.empty())
+                        return Value(static_cast<double>(ch));
+                      if (ch == static_cast<int>(args[0].toNumber()))
+                        return Value(true);
+                    }
+                    return Value(false);
+                  });
+}
 
-      std::string filename = moduleName + ".lfi3a";
-      std::string fullPath = filename;
+void Interpreter::loadModule(const std::string &moduleName) {
+  if (importedModules.find(moduleName) != importedModules.end())
+    return;
 
-      if (!currentDirectory.empty()) {
-        fs::path dirPath = fs::path(currentDirectory) / filename;
-        if (fs::exists(dirPath))
-          fullPath = dirPath.string();
-      }
+  std::string filename = moduleName + ".lfi3a";
+  std::string fullPath = filename;
 
-      std::ifstream file(fullPath);
-      if (!file.is_open()) {
-        ErrorHandler::fatal(0, 0, "Cannot open module file '" + filename + "'");
-      }
+  if (!currentDirectory.empty()) {
+    fs::path dirPath = fs::path(currentDirectory) / filename;
+    if (fs::exists(dirPath))
+      fullPath = dirPath.string();
+  }
 
-      std::string code((std::istreambuf_iterator<char>(file)),
-                       std::istreambuf_iterator<char>());
-      file.close();
+  std::ifstream file(fullPath);
+  if (!file.is_open()) {
+    ErrorHandler::fatal(0, 0, "Cannot open module file '" + filename + "'");
+  }
 
-      importedModules.insert(moduleName);
-      Lexer lexer(code);
-      auto tokens = lexer.tokenize();
-      Parser parser(tokens);
-      auto ast = parser.parse();
+  std::string code((std::istreambuf_iterator<char>(file)),
+                   std::istreambuf_iterator<char>());
+  file.close();
 
-      for (const auto &node : ast) {
-        if (hasReturned)
-          hasReturned = false;
-        execute(node);
-      }
-    }
+  importedModules.insert(moduleName);
+  Lexer lexer(code);
+  auto tokens = lexer.tokenize();
+  Parser parser(tokens);
+  auto ast = parser.parse();
 
-    void Interpreter::loadModuleItem(const std::string &moduleName,
-                                     const std::string &itemName) {
-      loadModule(moduleName);
-    }
+  for (const auto &node : ast) {
+    if (hasReturned)
+      hasReturned = false;
+    execute(node);
+  }
+}
+
+void Interpreter::loadModuleItem(const std::string &moduleName,
+                                 const std::string &itemName) {
+  loadModule(moduleName);
+}

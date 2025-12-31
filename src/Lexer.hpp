@@ -48,6 +48,7 @@ enum TokenType {
   PLUS_PLUS, // ++
   LBRACKET,  // [
   RBRACKET,  // ]
+  PERCENT,   // %
 
   // Special
   END,

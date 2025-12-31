@@ -23,16 +23,16 @@ LFI3A (pronounced "lfj-ʕa") is a beginner-friendly programming language that bl
 
 1. Clone the repository (if applicable)
 
-```bash
-git clone https://github.com/Oussama-jabrane/lfi3a.git
-cd lfi3a
-```
+    ```bash
+    git clone https://github.com/Oussama-jabrane/lfi3a.git
+    cd lfi3a
+    ```
 
-1. Compile the interpreter:
+2. Compile the interpreter:
 
-```bash
-g++ -std=c++17 src/*.cpp -o lfi3a
-```
+    ```bash
+    g++ -std=c++17 src/*.cpp -o lfi3a
+    ```
 
 ### Your First Program
 
