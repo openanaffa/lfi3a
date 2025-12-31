@@ -1,0 +1,17 @@
+// HTTP Client Example
+// Fetches a webpage and prints the status and body
+
+dir host = "example.com"
+dir path = "/"
+kteb("Fetching", host + path, "...")
+
+dir response = talab(host, path)
+
+ila (response["raw"] == wlou) {
+    kteb("Request failed!")
+} wla {
+    kteb("Status:", response["status_line"])
+    kteb("Body Size:", tul(response["body"]))
+    kteb("Body Content:")
+    kteb(response["body"])
+}

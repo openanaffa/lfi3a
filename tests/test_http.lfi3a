@@ -1,0 +1,11 @@
+// Test HTTP Client
+kteb("Sending HTTP Request to example.com...")
+
+// port 80 is default if omitted
+dir response = talab("example.com", "/")
+
+// Since Map printing is broken, we access fields directly
+kteb("Status Line:", response["status_line"])
+kteb("Body Length:", tul(response["body"]))
+kteb("Body Preview:", response["body"]) 
+// Note: Printing full body might be too long, but let's see.

@@ -14,6 +14,8 @@ bool Value::isTruthy() const {
     return !std::get<std::string>(data).empty();
   case ValueType::ARRAY:
     return !std::get<ArrayPtr>(data)->empty();
+  case ValueType::MAP:
+    return !std::get<MapPtr>(data)->empty();
   case ValueType::NATIVE_FUNC:
     return true;
   default:

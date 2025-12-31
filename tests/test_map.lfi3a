@@ -1,0 +1,23 @@
+// Test Map functionality
+dir m = mo3jam()
+kteb("Map created:", m)
+
+m["name"] = "LFI3A"
+m["version"] = 1.0
+m["is_awesome"] = s7i7
+
+kteb("Map content:", m)
+kteb("Name:", m["name"])
+kteb("Version:", m["version"])
+
+// Test update
+m["version"] = 1.1
+kteb("Updated Version:", m["version"])
+
+// Test nested map (should work given value semantics)
+dir config = mo3jam()
+config["server"] = "localhost"
+config["port"] = 8080
+m["config"] = config
+
+kteb("Nested Map:", m)

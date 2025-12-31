@@ -1,0 +1,4 @@
+// Test Local Server
+kteb("Connecting to local server...")
+dir response = talab("localhost", "/", 8080)
+kteb("Response from server:", response["body"])

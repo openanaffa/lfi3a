@@ -17,6 +17,11 @@
 #include <termios.h>
 #include <thread>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 
 namespace fs = std::filesystem;
@@ -84,24 +89,29 @@ void Interpreter::execute(const ASTNodePtr &node) {
       Value arrValue = evaluate(target->children[0]);
       Value indexValue = evaluate(target->children[1]);
 
-      if (arrValue.type != ValueType::ARRAY) {
+      if (arrValue.type == ValueType::ARRAY) {
+        if (indexValue.type != ValueType::NUMBER) {
+          ErrorHandler::fatal(target->line, target->column,
+                              "Index must be a number for arrays.");
+        }
+        auto arr = std::get<ArrayPtr>(arrValue.data);
+        int index = (int)indexValue.toNumber();
+        if (index < 0 || index >= (int)arr->size()) {
+          ErrorHandler::fatal(target->line, target->column,
+                              "Array index out of bounds.");
+        }
+        (*arr)[index] = val;
+      } else if (arrValue.type == ValueType::MAP) {
+        if (indexValue.type != ValueType::STRING) {
+          ErrorHandler::fatal(target->line, target->column,
+                              "Key must be a string for maps.");
+        }
+        auto m = std::get<MapPtr>(arrValue.data);
+        (*m)[indexValue.toString()] = val;
+      } else {
         ErrorHandler::fatal(target->line, target->column,
-                            "Indexing non-array value.");
+                            "Indexing non-array/non-map value.");
       }
-      if (indexValue.type != ValueType::NUMBER) {
-        ErrorHandler::fatal(target->line, target->column,
-                            "Index must be a number.");
-      }
-
-      auto arr = std::get<ArrayPtr>(arrValue.data);
-      int index = (int)indexValue.toNumber();
-
-      if (index < 0 || index >= (int)arr->size()) {
-        ErrorHandler::fatal(target->line, target->column,
-                            "Array index out of bounds.");
-      }
-
-      (*arr)[index] = val;
     }
     break;
   }
@@ -261,24 +271,35 @@ Value Interpreter::evaluate(const ASTNodePtr &node) {
     Value arrValue = evaluate(node->children[0]);
     Value indexValue = evaluate(node->children[1]);
 
-    if (arrValue.type != ValueType::ARRAY) {
+    if (arrValue.type == ValueType::ARRAY) {
+      if (indexValue.type != ValueType::NUMBER) {
+        ErrorHandler::fatal(node->line, node->column,
+                            "Index must be a number for arrays.");
+      }
+      auto arr = std::get<ArrayPtr>(arrValue.data);
+      int index = (int)indexValue.toNumber();
+      if (index < 0 || index >= (int)arr->size()) {
+        ErrorHandler::fatal(node->line, node->column,
+                            "Array index out of bounds: " +
+                                std::to_string(index));
+      }
+      return (*arr)[index];
+    } else if (arrValue.type == ValueType::MAP) {
+      if (indexValue.type != ValueType::STRING) {
+        ErrorHandler::fatal(node->line, node->column,
+                            "Key must be a string for maps.");
+      }
+      auto m = std::get<MapPtr>(arrValue.data);
+      std::string key = indexValue.toString();
+      if (m->find(key) == m->end()) {
+        return Value(); // Return NIL if key not found? or Error? LFI3A style seems permissive, so NIL.
+      }
+      return (*m)[key];
+    } else {
       ErrorHandler::fatal(node->line, node->column,
-                          "Indexing non-array value.");
+                          "Indexing non-array/non-map value.");
     }
-    if (indexValue.type != ValueType::NUMBER) {
-      ErrorHandler::fatal(node->line, node->column, "Index must be a number.");
-    }
-
-    auto arr = std::get<ArrayPtr>(arrValue.data);
-    int index = (int)indexValue.toNumber();
-
-    if (index < 0 || index >= (int)arr->size()) {
-      ErrorHandler::fatal(node->line, node->column,
-                          "Array index out of bounds: " +
-                              std::to_string(index));
-    }
-
-    return (*arr)[index];
+    return Value(); // Unreachable
   }
 
   case NodeType::BINARY_OP: {
@@ -480,6 +501,169 @@ void Interpreter::registerBuiltins() {
                   now.time_since_epoch())
                   .count();
     return Value((double)ms);
+  });
+
+  // Networking Library
+  registerBuiltin("socket_jadid", [](const std::vector<Value> &args) -> Value {
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) return Value(-1.0);
+    return Value((double)sockfd);
+  });
+
+  registerBuiltin("socket_rabt", [](const std::vector<Value> &args) -> Value {
+    if (args.size() < 3) return Value(false);
+    int sockfd = (int)args[0].toNumber();
+    std::string host = args[1].toString();
+    int port = (int)args[2].toNumber();
+
+    struct hostent *server = gethostbyname(host.c_str());
+    if (server == NULL) return Value(false);
+
+    struct sockaddr_in serv_addr;
+    std::fill((char *)&serv_addr, (char *)&serv_addr + sizeof(serv_addr), 0);
+    serv_addr.sin_family = AF_INET;
+    std::copy((char *)server->h_addr, (char *)server->h_addr + server->h_length, (char *)&serv_addr.sin_addr.s_addr);
+    serv_addr.sin_port = htons(port);
+
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+      return Value(false);
+    return Value(true);
+  });
+
+  registerBuiltin("socket_sift", [](const std::vector<Value> &args) -> Value {
+    if (args.size() < 2) return Value(-1.0);
+    int sockfd = (int)args[0].toNumber();
+    std::string msg = args[1].toString();
+    int n = write(sockfd, msg.c_str(), msg.length());
+    return Value((double)n);
+  });
+
+  registerBuiltin("socket_sta9bel", [](const std::vector<Value> &args) -> Value {
+    if (args.size() < 2) return Value("");
+    int sockfd = (int)args[0].toNumber();
+    int size = (int)args[1].toNumber();
+    std::vector<char> buffer(size);
+    int n = read(sockfd, buffer.data(), size);
+    if (n < 0) return Value("");
+    return Value(std::string(buffer.data(), n));
+  });
+
+  registerBuiltin("socket_sed", [](const std::vector<Value> &args) -> Value {
+    if (args.empty()) return Value(false);
+    int sockfd = (int)args[0].toNumber();
+    close(sockfd);
+    return Value(true);
+  });
+
+  registerBuiltin("socket_rbet", [](const std::vector<Value> &args) -> Value {
+    if (args.size() < 2) return Value(false);
+    int sockfd = (int)args[0].toNumber();
+    int port = (int)args[1].toNumber();
+
+    struct sockaddr_in serv_addr;
+    std::fill((char *)&serv_addr, (char *)&serv_addr + sizeof(serv_addr), 0);
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(port);
+
+    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+      return Value(false);
+    return Value(true);
+  });
+
+  registerBuiltin("socket_ghayr_mghlo9", [](const std::vector<Value> &args) -> Value {
+    if (args.empty()) return Value(false);
+    int sockfd = (int)args[0].toNumber();
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if (flags == -1) return Value(false);
+    fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+    return Value(true);
+  });
+
+  registerBuiltin("socket_sma3", [](const std::vector<Value> &args) -> Value {
+    if (args.empty()) return Value(false);
+    int sockfd = (int)args[0].toNumber();
+    int backlog = args.size() > 1 ? (int)args[1].toNumber() : 5;
+    listen(sockfd, backlog);
+    return Value(true);
+  });
+
+  registerBuiltin("socket_qbal", [](const std::vector<Value> &args) -> Value {
+    if (args.empty()) return Value(-1.0);
+    int sockfd = (int)args[0].toNumber();
+    struct sockaddr_in cli_addr;
+    socklen_t clilen = sizeof(cli_addr);
+    int newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen);
+    return Value((double)newsockfd);
+  });
+
+  registerBuiltin("talab", [](const std::vector<Value> &args) -> Value {
+    // Basic HTTP GET: talab(host, path, port)
+    // Returns body as string
+    if (args.size() < 2) return Value("");
+    std::string host = args[0].toString();
+    std::string path = args[1].toString();
+    int port = args.size() > 2 ? (int)args[2].toNumber() : 80;
+
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) return Value("Error: Socket");
+
+    struct hostent *server = gethostbyname(host.c_str());
+    if (server == NULL) { close(sockfd); return Value("Error: DNS"); }
+
+    struct sockaddr_in serv_addr;
+    std::fill((char *)&serv_addr, (char *)&serv_addr + sizeof(serv_addr), 0);
+    serv_addr.sin_family = AF_INET;
+    std::copy((char *)server->h_addr, (char *)server->h_addr + server->h_length, (char *)&serv_addr.sin_addr.s_addr);
+    serv_addr.sin_port = htons(port);
+
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        close(sockfd);
+        return Value("Error: Connect"); 
+    }
+
+    std::string request = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n";
+    write(sockfd, request.c_str(), request.length());
+
+    std::string response;
+    char buffer[4096];
+    int n;
+    while ((n = read(sockfd, buffer, sizeof(buffer)-1)) > 0) {
+        buffer[n] = 0;
+        response += buffer;
+    }
+    close(sockfd);
+    
+    // We should parse the body vs headers, but for now return full response
+    // Or return a Map { "status": ..., "headers": ..., "body": ... }
+    // Let's return a Map!
+    
+    auto m = std::make_shared<std::map<std::string, Value>>();
+    (*m)["raw"] = Value(response);
+    
+    size_t header_end = response.find("\r\n\r\n");
+    if (header_end != std::string::npos) {
+        std::string headers = response.substr(0, header_end);
+        std::string body = response.substr(header_end + 4);
+        (*m)["headers"] = Value(headers);
+        (*m)["body"] = Value(body);
+        
+        // Parse Status Line
+        size_t first_line = headers.find("\r\n");
+        if (first_line != std::string::npos) {
+            std::string status_line = headers.substr(0, first_line);
+             (*m)["status_line"] = Value(status_line);
+        }
+    } else {
+        (*m)["body"] = Value(response);
+    }
+
+    return Value(m);
+  });
+
+  registerBuiltin("mo3jam", [](const std::vector<Value> &args) -> Value {
+    auto m = std::make_shared<std::map<std::string, Value>>();
+    return Value(m);
   });
 
   // Math Library

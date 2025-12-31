@@ -1,0 +1,30 @@
+// HTTP Server Example
+// Listens on port 8080
+
+dir port = 8080
+dir server_fd = socket_jadid()
+kteb("Socket created:", server_fd)
+
+dir bound = socket_rbet(server_fd, port)
+ila (bound != s7i7) {
+    kteb("Failed to bind to port", port)
+    rje3 1
+}
+kteb("Bound to port", port)
+
+socket_sma3(server_fd, 5)
+kteb("Listening...")
+
+ma7ad (s7i7) {
+    dir client_fd = socket_qbal(server_fd)
+    kteb("Client connected!", client_fd)
+    
+    dir request = socket_sta9bel(client_fd, 1024)
+    kteb("Received request request_length:", tul(request))
+    
+    dir response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nSalam from LFI3A Server!"
+    socket_sift(client_fd, response)
+    
+    socket_sed(client_fd)
+    kteb("Client served and closed.")
+}

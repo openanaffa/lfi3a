@@ -42,7 +42,7 @@ kteb(tul(s)) // 5
 
 ### `naw3(item)`
 
-Returns the type of the item as a string (e.g., "number", "string", "bool", "array").
+Returns the type of the item as a string (e.g., "number", "string", "bool", "array", "map").
 
 **Example:**
 
@@ -170,3 +170,72 @@ chacha_imsah()
 rsem_mrabba3(10, 5, 2, 2, 1) // Draw red square
 chacha_3red()
 ```
+
+## Data Structures
+
+### `mo3jam()`
+
+Creates a new empty Map (Dictionary). Maps use string keys.
+
+**Example:**
+
+```lfi3a
+dir m = mo3jam()
+m["name"] = "LFI3A"
+kteb(m["name"])
+```
+
+## Networking
+
+LFI3A supports both low-level socket operations and high-level HTTP requests.
+
+### HTTP Client
+
+#### `talab(host, path, [port])`
+
+Performs a simple HTTP GET request. Returns a Map containing `body` (string), `headers` (string), `raw` (full response), and `status_line`.
+
+**Example:**
+
+```lfi3a
+dir res = talab("example.com", "/")
+kteb(res["body"])
+```
+
+### Low-Level Sockets
+
+#### `socket_jadid()`
+
+Creates a new TCP socket. Returns a file descriptor (number) or -1 on error.
+
+#### `socket_rabt(fd, host, port)`
+
+Connects a socket to a remote host (Client). Returns true on success.
+
+#### `socket_rbet(fd, port)`
+
+Binds a socket to a local port (Server). Returns true on success.
+
+#### `socket_sma3(fd, backlog)`
+
+Listens for incoming connections. `backlog` defaults to 5.
+
+#### `socket_qbal(fd)`
+
+Accepts an incoming connection. Returns a new file descriptor for the client.
+
+#### `socket_ghayr_mghlo9(fd)`
+
+Sets the socket to non-blocking mode. Returns true on success.
+
+#### `socket_sift(fd, message)`
+
+Sends a string message over the socket.
+
+#### `socket_sta9bel(fd, size)`
+
+Receives up to `size` bytes from the socket. Returns string.
+
+#### `socket_sed(fd)`
+
+Closes the socket.
