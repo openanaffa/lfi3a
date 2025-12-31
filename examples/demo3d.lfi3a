@@ -1,0 +1,141 @@
+// 3D Cube Demo in LFI3A
+kteb("Bismillah... 3D Cube!")
+
+// Screen Dimensions
+dir width = 40
+dir height = 20
+
+// Bresenham's Line Algorithm
+dalla rsem_khet(x1, y1, x2, y2, c) {
+    dir dx = motla9(x2 - x1)
+    dir dy = -motla9(y2 - y1)
+    
+    dir sx = 1
+    ila (x1 < x2) { sx = 1 } wla { sx = -1 }
+    
+    dir sy = 1
+    ila (y1 < y2) { sy = 1 } wla { sy = -1 }
+    
+    dir err = dx + dy
+    dir drawing = s7i7
+    
+    ma7ad (drawing) {
+        // Plot pixel (Clipping check)
+        ila (x1 >= 0 w x1 < width w y1 >= 0 w y1 < height) {
+            rsem_mrabba3(x1, y1, 1, 1, c)
+        }
+        
+        ila (x1 == x2 w y1 == y2) {
+            drawing = ghalat
+        } wla {
+            dir e2 = 2 * err
+            ila (e2 >= dy) {
+                err = err + dy
+                x1 = x1 + sx
+            }
+            ila (e2 <= dx) {
+                err = err + dx
+                y1 = y1 + sy
+            }
+        }
+    }
+}
+
+// Transform Point by Matrix
+dalla transform(v, m) {
+    dir x = v[0]
+    dir y = v[1]
+    dir z = v[2]
+    
+    dir rx = x * m[0] + y * m[1] + z * m[2] + m[3]
+    dir ry = x * m[4] + y * m[5] + z * m[6] + m[7]
+    dir rz = x * m[8] + y * m[9] + z * m[10] + m[11]
+    
+    rje3 mowajeha3(rx, ry, rz)
+}
+
+// 3D Projection
+dalla project(x, y, z) {
+    dir scale = 15
+    dir dist = 4
+    dir z_factor = z + dist
+    
+    // Avoid division by zero
+    ila (z_factor == 0) { z_factor = 0.001 }
+    
+    dir px = x * scale / z_factor + width / 2
+    dir py = y * scale / z_factor + height / 2
+    rje3 mowajeha3(dwer(px), dwer(py), 0)
+}
+
+// Vertices of a Cube
+dir v0 = mowajeha3(-1, -1, -1)
+dir v1 = mowajeha3(1, -1, -1)
+dir v2 = mowajeha3(1, 1, -1)
+dir v3 = mowajeha3(-1, 1, -1)
+dir v4 = mowajeha3(-1, -1, 1)
+dir v5 = mowajeha3(1, -1, 1)
+dir v6 = mowajeha3(1, 1, 1)
+dir v7 = mowajeha3(-1, 1, 1)
+
+dir angle = 0
+dir khaddam = s7i7
+
+// Main Loop
+ma7ad (khaddam) {
+    chacha_imsah()
+    
+    // Update Rotation
+    angle = angle + 0.1
+    
+    // Create Rotation Matrix (Rotate around X and Y)
+    dir rotX = mf_rotate(mf_mawjud(), angle, mowajeha3(1, 0, 0))
+    dir rotY = mf_rotate(mf_mawjud(), angle * 0.5, mowajeha3(0, 1, 0))
+    dir rot = mf_dorbat(rotX, rotY)
+    
+    // Transform Vertices
+    dir tv0 = transform(v0, rot)
+    dir tv1 = transform(v1, rot)
+    dir tv2 = transform(v2, rot)
+    dir tv3 = transform(v3, rot)
+    dir tv4 = transform(v4, rot)
+    dir tv5 = transform(v5, rot)
+    dir tv6 = transform(v6, rot)
+    dir tv7 = transform(v7, rot)
+    
+    // Project Vertices
+    dir pv0 = project(tv0[0], tv0[1], tv0[2])
+    dir pv1 = project(tv1[0], tv1[1], tv1[2])
+    dir pv2 = project(tv2[0], tv2[1], tv2[2])
+    dir pv3 = project(tv3[0], tv3[1], tv3[2])
+    dir pv4 = project(tv4[0], tv4[1], tv4[2])
+    dir pv5 = project(tv5[0], tv5[1], tv5[2])
+    dir pv6 = project(tv6[0], tv6[1], tv6[2])
+    dir pv7 = project(tv7[0], tv7[1], tv7[2])
+    
+    // Draw Edges (Front Face)
+    rsem_khet(pv0[0], pv0[1], pv1[0], pv1[1], 1)
+    rsem_khet(pv1[0], pv1[1], pv2[0], pv2[1], 1)
+    rsem_khet(pv2[0], pv2[1], pv3[0], pv3[1], 1)
+    rsem_khet(pv3[0], pv3[1], pv0[0], pv0[1], 1)
+    
+    // Back Face
+    rsem_khet(pv4[0], pv4[1], pv5[0], pv5[1], 2)
+    rsem_khet(pv5[0], pv5[1], pv6[0], pv6[1], 2)
+    rsem_khet(pv6[0], pv6[1], pv7[0], pv7[1], 2)
+    rsem_khet(pv7[0], pv7[1], pv4[0], pv4[1], 2)
+    
+    // Connecting Edges
+    rsem_khet(pv0[0], pv0[1], pv4[0], pv4[1], 3)
+    rsem_khet(pv1[0], pv1[1], pv5[0], pv5[1], 3)
+    rsem_khet(pv2[0], pv2[1], pv6[0], pv6[1], 3)
+    rsem_khet(pv3[0], pv3[1], pv7[0], pv7[1], 3)
+    
+    chacha_3red()
+    na3ess(50)
+    
+    dir key = wrack_3la()
+    ila (key == 113) { khaddam = ghalat } // 'q'
+}
+
+chacha_sedd()
