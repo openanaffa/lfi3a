@@ -13,6 +13,35 @@ dir s7i7_bool = s7i7   // true
 dir ghalat_bool = ghalat // false
 ```
 
+## Arrays & Collections
+
+### Creating Arrays
+
+You can create an array using brackets `[]` or built-in functions like `mowajeha3`.
+
+```lfi3a
+dir numbers = [1, 2, 3, 4]
+dir vector = mowajeha3(10, 20, 30)
+```
+
+### Accessing Elements
+
+Access elements using 0-based indexing with `[]`.
+
+```lfi3a
+dir v = numbers[0]  // 1
+dir z = vector[2]   // 30
+```
+
+### Modifying Elements
+
+Assign values to specific indices.
+
+```lfi3a
+numbers[1] = 99
+kteb(numbers[1]) // 99
+```
+
 ## Control Flow
 
 ### If Statements
@@ -68,6 +97,7 @@ salam("Oussama")
 - **Arithmetics**: `+`, `-`, `*`, `/`
 - **Comparison**: `==`, `!=`, `<`, `>`, `<=`, `>=`
 - **Logical**: `w` (and), `wla` (or)
+- **Math**: `motla9` (abs) is also available as an operator-like function.
 
 ## Comments
 
