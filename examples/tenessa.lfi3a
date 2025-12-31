@@ -1,0 +1,98 @@
+// Tenessa Game (Ping Pong) in LFI3A
+kteb("Bismillah... Tenessa!")
+
+// Game State
+dir kuraX = 20
+dir kuraY = 10
+dir velX = 1
+dir velY = 1
+dir pad1Y = 8
+dir pad2Y = 8
+dir score1 = 0
+dir score2 = 0
+dir khaddam = s7i7
+
+// Screen Dimensions
+dir width = 40
+dir height = 20
+
+// Game Loop
+ma7ad (khaddam) {
+    chacha_imsah()
+
+    // Draw Borders
+    rsem_mrabba3(0, 0, width, 1, 0)       // Top
+    rsem_mrabba3(0, height, width, 1, 0)  // Bottom
+    rsem_mrabba3(0, 0, 1, height, 0)      // Left
+    rsem_mrabba3(width-1, 0, 1, height, 0)// Right
+
+    // Draw Scores (Simple representation using bars for now, or just console log)
+    // kteb("Score:", score1, "-", score2) // This might clutter, let's skip for pure render loop
+
+    // Draw Paddles (Green)
+    rsem_mrabba3(2, pad1Y, 1, 4, 2)       // Player 1 (Left)
+    rsem_mrabba3(37, pad2Y, 1, 4, 3)      // Player 2 (Right - Blue)
+
+    // Draw Ball (Red)
+    rsem_mrabba3(kuraX, kuraY, 1, 1, 1)
+
+    chacha_3red()
+
+    // Input Handling
+    dir key = wrack_3la()
+    ila (key == 113) { khaddam = ghalat } // 'q' to quit
+    
+    // Player 1 Controls (w/s)
+    wila (key == 119) {                   // 'w' up
+        ila (pad1Y > 1) { pad1Y = pad1Y - 1 }
+    }
+    wila (key == 115) {                   // 's' down
+        ila (pad1Y < 15) { pad1Y = pad1Y + 1 }
+    }
+
+    // Player 2 Controls (i/k)
+    wila (key == 105) {                   // 'i' up
+        ila (pad2Y > 1) { pad2Y = pad2Y - 1 }
+    }
+    wila (key == 107) {                   // 'k' down
+        ila (pad2Y < 15) { pad2Y = pad2Y + 1 }
+    }
+
+    // Ball Movement
+    kuraX = kuraX + velX
+    kuraY = kuraY + velY
+
+    // Wall Collision (Top/Bottom)
+    ila (kuraY <= 1 wla kuraY >= 19) {
+        velY = -velY
+    }
+
+    // Paddle Collision (Simple box check)
+    // Player 1 (Left)
+    ila (kuraX == 3 w (kuraY >= pad1Y w kuraY <= pad1Y + 4)) {
+        velX = -velX
+    }
+    // Player 2 (Right)
+    ila (kuraX == 36 w (kuraY >= pad2Y w kuraY <= pad2Y + 4)) {
+        velX = -velX
+    }
+
+    // Scoring (Reset ball)
+    ila (kuraX < 1) {
+        score2 = score2 + 1
+        kuraX = 20
+        kuraY = 10
+        velX = 1
+    }
+    wila (kuraX > 38) {
+        score1 = score1 + 1
+        kuraX = 20
+        kuraY = 10
+        velX = -1
+    }
+
+    na3ess(100)
+}
+
+chacha_sedd()
+kteb("Game Over! Score:", score1, "-", score2)
